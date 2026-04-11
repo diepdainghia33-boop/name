@@ -1,0 +1,46 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ["./src/**/*.{js,jsx}"],
+  theme: {
+    extend: {
+      colors: {
+        primary: "#84adff",
+        "primary-dim": "#679dff",
+        "primary-container": "#6c9fff",
+        tertiary: "#fab0ff",
+        "tertiary-container": "#f39cfb",
+        surface: "#0e0e0e",
+        "surface-dim": "#0e0e0e",
+        "surface-bright": "#2c2c2c",
+        "surface-container-lowest": "#000000",
+        "surface-container-low": "#131313",
+        "surface-container": "#1a1a1a",
+        "surface-container-high": "#20201f",
+        "surface-container-highest": "#262626",
+        "surface-variant": "#262626",
+        "on-surface": "#ffffff",
+        "on-surface-variant": "#adaaaa",
+        "on-primary": "#002c65",
+        "on-primary-container": "#00214e",
+        outline: "#767575",
+        "outline-variant": "#484847",
+        error: "#ff716c",
+        "inverse-surface": "#fcf9f8",
+        "inverse-on-surface": "#565555",
+        "inverse-primary": "#005bc1",
+      },
+      fontFamily: {
+        headline: ["Space Grotesk", "sans-serif"],
+        body: ["Inter", "sans-serif"],
+        label: ["Inter", "sans-serif"],
+      },
+      borderRadius: {
+        DEFAULT: "0.25rem",
+        lg: "0.5rem",
+        xl: "0.75rem",
+        full: "9999px",
+      },
+    },
+  },
+  plugins: [],
+};
