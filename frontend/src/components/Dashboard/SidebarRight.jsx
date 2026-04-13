@@ -27,7 +27,7 @@ function ActionButton({ onClick, children, disabled, primary, icon }) {
     );
 }
 
-export default function SidebarRight({ logs, addLog }) {
+export default function SidebarRight({ user, logs, addLog }) {
     const [loading, setLoading] = useState(false);
     const logRef = useRef(null);
 
@@ -125,25 +125,7 @@ export default function SidebarRight({ logs, addLog }) {
                 )}
             </div>
 
-            {/* 👤 USER PROFILE - FIXED */}
-            <div className="mt-auto pt-4 border-t border-[#20201f] flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-sm font-semibold">
-                    JT
-                </div>
 
-                <div className="flex flex-col">
-                    <span className="text-sm text-white font-medium">
-                        Julian Thorne
-                    </span>
-                    <span className="text-xs text-gray-500 uppercase tracking-wide">
-                        Lead Architect
-                    </span>
-                </div>
-
-                <button className="ml-auto text-gray-400 hover:text-white">
-                    ⎋
-                </button>
-            </div>
 
         </aside>
     );

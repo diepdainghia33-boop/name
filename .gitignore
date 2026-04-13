@@ -1,0 +1,23 @@
+# Dependencies
+**/node_modules
+**/vendor
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker-data/
+
+# Build files
+**/dist
+**/build

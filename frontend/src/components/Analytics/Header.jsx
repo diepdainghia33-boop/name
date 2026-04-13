@@ -51,14 +51,15 @@ export default function Header() {
                 </div>
 
                 {/* USER */}
-                <div className="flex items-center gap-2 cursor-pointer group">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold">
-                        D
+                <div className="flex items-center gap-3 cursor-pointer group bg-white/5 pr-4 pl-1 py-1 rounded-full border border-white/5 hover:border-blue-500/30 transition-all">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-black uppercase shadow-lg shadow-blue-500/20">
+                        {JSON.parse(localStorage.getItem("user"))?.name?.charAt(0) || "A"}
                     </div>
 
                     <div className="hidden md:block">
-                        <p className="text-sm text-white leading-none">Duy</p>
-                        <p className="text-xs text-gray-400">Admin</p>
+                        <p className="text-xs font-black text-white leading-none uppercase tracking-widest">
+                            {JSON.parse(localStorage.getItem("user"))?.name || "Architect"}
+                        </p>
                     </div>
 
                     <span className="material-symbols-outlined text-gray-500 group-hover:text-white transition text-sm">

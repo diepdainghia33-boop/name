@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Blueprint;
+use App\Models\ActivityLog;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class DashboardController extends Controller
+{
+    public function getData()
+    {
+        $userId = Auth::id();
+
+        $blueprints = Blueprint::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->limit(6)
+            ->get();
+
+        $logs = ActivityLog::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        // Metrics (In a real app, these would come from various tables or system checks)
+        $metrics = [
+            'health' => 99.95,
+            'tokens' => 1450200,
+            'latency' => 38,
+            'projects' => Blueprint::where('user_id', $userId)->count(),
+        ];
+
+        return response()->json([
+            'blueprints' => $blueprints,
+            'logs' => $logs,
+            'metrics' => $metrics
+        ]);
+    }
+
+    public function addLog(Request $request)
+    {
+        $request->validate([
+            'message' => 'required|string',
+            'type' => 'nullable|string'
+        ]);
+
+        $log = ActivityLog::create([
+            'user_id' => Auth::id(),
+            'message' => $request->message,
+            'type' => $request->type ?? 'info'
+        ]);
+
+        return response()->json($log);
+    }
+}

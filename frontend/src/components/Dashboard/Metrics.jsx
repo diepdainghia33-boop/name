@@ -1,56 +1,95 @@
-import { FaShieldAlt, FaCube, FaTachometerAlt } from "react-icons/fa";
+import { Shield, Cpu, Activity } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function Metrics({ data }) {
+    const container = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+        }
+    };
+
     return (
-        <section className="grid grid-cols-3 gap-6">
+        <motion.section
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        >
             <Card
-                icon={<FaShieldAlt />}
-                label="ACTIVE"
+                icon={<Shield size={24} />}
+                label="ACTIVE STATUS"
                 title="System Health"
                 value={`${data.health}%`}
-                color="text-blue-400"
+                color="from-emerald-500 to-green-400"
+                textColor="text-emerald-400"
+                delay={0.1}
             />
             <Card
-                icon={<FaCube />}
-                label="USAGE"
+                icon={<Cpu size={24} />}
+                label="COMPUTING"
                 title="Token Usage"
                 value={(data.tokens / 1000000).toFixed(1) + "M"}
-                color="text-pink-400"
+                color="from-purple-500 to-pink-400"
+                textColor="text-purple-400"
+                delay={0.2}
             />
             <Card
-                icon={<FaTachometerAlt />}
+                icon={<Activity size={24} />}
                 label="NETWORK"
                 title="Global Latency"
-                value={data.latency + "ms"}
-                color="text-blue-300"
+                value={data.latency + " ms"}
+                color="from-blue-500 to-cyan-400"
+                textColor="text-cyan-400"
+                delay={0.3}
             />
-        </section>
+        </motion.section>
     );
 }
 
-function Card({ icon, label, title, value, color }) {
+function Card({ icon, label, title, value, color, textColor, delay }) {
+    const item = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
+    };
+
     return (
-        <div className="bg-[#111111] rounded-2xl p-5 border border-[#20201f]">
+        <motion.div
+            variants={item}
+            whileHover={{ y: -5, scale: 1.02 }}
+            className="relative bg-white/[0.02] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.05] shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden group cursor-pointer"
+        >
+            {/* Top glowing gradient line */}
+            <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${color} opacity-70 group-hover:opacity-100 transition-opacity`} />
+
+            {/* Ambient background glow on hover */}
+            <div className={`absolute -right-10 -top-10 w-32 h-32 bg-gradient-to-br ${color} rounded-full blur-[60px] opacity-10 group-hover:opacity-30 transition-opacity duration-500`} />
 
             {/* 🔹 TOP */}
-            <div className="flex items-center justify-between mb-4">
-                <div className={`text-lg ${color}`}>
+            <div className="flex items-center justify-between mb-8">
+                <div className={`p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] ${textColor} shadow-lg`}>
                     {icon}
                 </div>
-                <span className="text-xs text-gray-500 tracking-widest">
-                    {label}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[10px] font-bold text-gray-500 tracking-widest uppercase">
+                        {label}
+                    </span>
+                </div>
             </div>
 
             {/* 🔹 CONTENT */}
-            <div>
-                <p className="text-xs text-gray-500 uppercase mb-1">
+            <div className="relative z-10">
+                <p className="text-sm font-medium text-gray-400 mb-1">
                     {title}
                 </p>
-                <h3 className="text-2xl font-semibold text-white">
-                    {value}
-                </h3>
+                <div className="flex items-baseline gap-2">
+                    <h3 className="text-4xl font-bold text-white tracking-tight">
+                        {value}
+                    </h3>
+                </div>
             </div>
-        </div>
+        </motion.div>
     );
 }

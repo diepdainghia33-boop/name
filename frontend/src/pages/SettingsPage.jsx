@@ -1,275 +1,294 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import SidebarLeft from "../components/Dashboard/SidebarLeft";
+import SidebarRight from "../components/Dashboard/SidebarRight";
+import Header from "../components/Dashboard/Header";
+import { User, Zap, Shield, Mail, Save, Eye, EyeOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 
-export default function ArchitectDashboard() {
-    const menuItems = [
-        { name: "Home", icon: "dashboard_customize" },
-        { name: "Chat", icon: "forum" },
-        { name: "Analytics", icon: "monitoring" },
-    ];
-    const logs = [
-        {
-            title: 'Settings Modified',
-            desc: 'Engine precision updated to ULTRA. Validated structural weights.',
-            time: '12:42 PM · AUG 24',
-            icon: 'history_edu',
-        },
-        {
-            title: 'Security Scan',
-            desc: 'Global audit complete. 0 vulnerabilities detected in local cache.',
-            time: '10:15 AM · AUG 24',
-            icon: 'verified_user',
-        },
-        {
-            title: 'New Key Issued',
-            desc: 'API v4 integration token generated for Project-X.',
-            time: 'YESTERDAY',
-            icon: 'vpn_key',
-        },
-        {
-            title: 'Account Login',
-            desc: 'Session started from IP 192.168.1.45 (New York, US).',
-            time: '2 DAYS AGO',
-            icon: 'login',
-        },
-    ];
+export default function ArchitectSettings() {
+    const [user, setUser] = useState(null);
+    const [activeTab, setActiveTab] = useState("overview");
+    const [showRightSidebar, setShowRightSidebar] = useState(true);
+    const [saved, setSaved] = useState(false);
+
+    // Form State
+    const [formData, setFormData] = useState({
+        name: "",
+        email: "",
+        current_password: "",
+        new_password: ""
+    });
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState({ type: "", text: "" });
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            setFormData(prev => ({
+                ...prev,
+                name: parsedUser.name,
+                email: parsedUser.email
+            }));
+        }
+    }, []);
+
+    const handleProfileUpdate = async () => {
+        setLoading(true);
+        setMessage({ type: "", text: "" });
+        try {
+            const token = localStorage.getItem("token");
+            const response = await axios.post("http://127.0.0.1:8000/api/update-profile", {
+                name: formData.name,
+                email: formData.email
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const updatedUser = response.data.user;
+            setUser(updatedUser);
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+
+            setSaved(true);
+            setMessage({ type: "success", text: "Matrix Link Deciphered & Synced." });
+            setTimeout(() => setSaved(false), 3000);
+        } catch (error) {
+            setMessage({
+                type: "error",
+                text: error.response?.data?.message || "Protocol interference detected. Update failed."
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePasswordUpdate = async () => {
+        setLoading(true);
+        setMessage({ type: "", text: "" });
+        try {
+            const token = localStorage.getItem("token");
+            await axios.post("http://127.0.0.1:8000/api/update-password", {
+                current_password: formData.current_password,
+                new_password: formData.new_password
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            setFormData(prev => ({ ...prev, current_password: "", new_password: "" }));
+            setMessage({ type: "success", text: "Security keys rotated successfully." });
+        } catch (error) {
+            setMessage({
+                type: "error",
+                text: error.response?.data?.message || "Security override failed."
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-        <div className="flex min-h-screen bg-[#000000] text-white font-sans antialiased selection:bg-[#85adff]/30">
+        <div className="flex h-screen bg-[#0e0e0e] text-white overflow-hidden">
+            <SidebarLeft user={user} />
 
-            {/* SIDEBAR - Cố định bên trái */}
-            <aside className="h-screen w-[260px] fixed left-0 top-0 bg-[#000000] border-r border-white/[0.05] flex flex-col z-50">
-                <div className="p-10 mb-2">
-                    <h1 className="text-xl font-black text-[#85adff] tracking-tighter uppercase leading-none">Architect AI</h1>
-                    <p className="text-[9px] text-gray-600 font-bold mt-2 uppercase tracking-[3px]">Precision Core v2.4</p>
-                </div>
+            <main className={`ml-64 ${showRightSidebar ? "mr-80" : "mr-0"} flex-1 px-8 py-10 overflow-y-auto transition-all duration-300`}>
+                <div className="max-w-6xl mx-auto">
 
-                <nav className="flex-1 px-4 space-y-1">
-                    {menuItems.map((item) => (
-                        <a key={item.name} href="#" className="flex items-center gap-4 px-4 py-3 text-gray-500 hover:text-gray-300 hover:bg-white/[0.02] rounded-xl transition-all group">
-                            <span className="material-symbols-outlined text-[22px] group-hover:rotate-6 transition-transform">{item.icon}</span>
-                            <span className="text-[15px] font-medium tracking-tight">{item.name}</span>
-                        </a>
-                    ))}
-                    <a className="relative flex items-center gap-4 px-4 py-3 text-[#85adff] bg-[#85adff]/5 border-l-[3px] border-[#85adff] mt-4 rounded-r-xl">
-                        <span className="material-symbols-outlined text-[22px] fill-current">settings_heart</span>
-                        <span className="text-[15px] font-bold tracking-tight">Settings</span>
-                    </a>
-                </nav>
+                    <Header
+                        tab={activeTab}
+                        setTab={setActiveTab}
+                        toggleSidebar={() => setShowRightSidebar(!showRightSidebar)}
+                        rightOpen={showRightSidebar}
+                    />
 
-                <div className="p-6 space-y-1 border-t border-white/[0.05]">
-                    <a href="#" className="flex items-center gap-4 px-4 py-3 text-gray-600 hover:text-gray-300 transition-colors group">
-                        <span className="material-symbols-outlined text-[20px]">contact_support</span>
-                        <span className="text-[14px]">Support</span>
-                    </a>
-                    <a href="#" className="flex items-center gap-4 px-4 py-3 text-gray-600 hover:text-red-500 transition-colors group">
-                        <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">logout</span>
-                        <span className="text-[14px]">Logout</span>
-                    </a>
-                </div>
-            </aside>
+                    {/* HERO SECTION */}
+                    <section className="mb-16 mt-4">
+                        <motion.h1
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-5xl lg:text-7xl font-bold leading-tight mb-4"
+                        >
+                            Configure AI <br />
+                            <span className="bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text">System</span> Protocols
+                        </motion.h1>
+                        <p className="text-gray-400 max-w-xl text-lg leading-relaxed">
+                            Fine-tune your architectural engine, manage security credentials, and optimize your neural processing workspace.
+                        </p>
+                    </section>
 
-            {/* MAIN CONTENT AREA */}
-            <main className="pl-[260px] flex-1 flex h-screen overflow-hidden">
+                    {/* Feedback Message */}
+                    <AnimatePresence>
+                        {message.text && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className={`mb-8 p-4 rounded-2xl text-sm font-bold border ${message.type === "success"
+                                        ? "bg-green-500/10 border-green-500/20 text-green-400"
+                                        : "bg-red-500/10 border-red-500/20 text-red-400"
+                                    }`}
+                            >
+                                {message.text}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
-                {/* CENTER COLUMN - Nội dung chính cuộn độc lập */}
-                <div className="flex-1 overflow-y-auto bg-[#000000] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex flex-col">
-                    {/* Header - Sticky */}
-                    <header className="h-24 flex shrink-0 items-center justify-between px-12 sticky top-0 bg-black/80 backdrop-blur-xl z-40 border-b border-white/[0.02]">
-                        <h1 className="text-[11px] font-black uppercase tracking-[5px] text-white/40">System Configuration</h1>
-                        <div className="flex items-center gap-8">
-                            <div className="relative cursor-pointer group">
-                                <span className="material-symbols-outlined text-gray-500 group-hover:text-white transition-colors text-[26px]">notifications</span>
-                                <span className="absolute top-1 right-1 w-2 h-2 bg-pink-500 rounded-full border-2 border-black"></span>
-                            </div>
-                            <div className="flex items-center gap-4 pl-8 border-l border-white/10">
-                                <div className="text-right">
-                                    <p className="text-sm font-black leading-none tracking-tight">Alex Sterling</p>
-                                    <p className="text-[10px] text-[#85adff] font-bold mt-1.5 uppercase tracking-widest">Lead Architect</p>
-                                </div>
-                                <img src="https://i.pravatar.cc/150?u=alex" className="w-11 h-11 rounded-xl border border-white/10 object-cover" alt="avatar" />
-                            </div>
-                        </div>
-                    </header>
+                    {/* Content Section */}
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            {activeTab === "overview" && (
+                                <div className="space-y-10 pb-20">
+                                    <div className="bg-white/5 border border-white/10 rounded-[40px] p-10 backdrop-blur-md relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[80px] -z-10" />
 
-                    {/* Content Body */}
-                    <div className="p-16 max-w-5xl mx-auto w-full">
-                        <div className="mb-20">
-                            <h2 className="text-8xl font-black mb-8 tracking-tighter leading-[0.9]">Core<br />Preferences</h2>
-                            <p className="text-gray-500 text-lg leading-relaxed max-w-xl font-medium">
-                                Adjust your global architectural parameters, security protocols, and generative engine weights.
-                            </p>
-                        </div>
-
-                        {/* Account Identity */}
-                        <section className="mb-20">
-                            <div className="flex items-center gap-3 mb-8 text-white/20">
-                                <span className="material-symbols-outlined text-lg">badge</span>
-                                <h3 className="text-[11px] font-black uppercase tracking-[3px]">Account Identity</h3>
-                            </div>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="bg-[#080808] border border-white/[0.05] p-7 rounded-2xl flex items-center gap-6 hover:bg-[#0c0c0c] transition-colors group">
-                                    <img src="https://i.pravatar.cc/150?u=alex" className="w-16 h-16 rounded-xl grayscale group-hover:grayscale-0 transition-all border border-white/10" alt="profile" />
-                                    <div className="flex-1">
-                                        <p className="text-[10px] text-gray-600 uppercase font-black mb-1.5 tracking-tighter">Display Name</p>
-                                        <p className="text-xl font-bold tracking-tight">Alex Sterling</p>
-                                    </div>
-                                    <span className="material-symbols-outlined text-gray-700 hover:text-white cursor-pointer transition-colors">edit_note</span>
-                                </div>
-                                <div className="bg-[#080808] border border-white/[0.05] p-7 rounded-2xl flex items-center gap-6 hover:bg-[#0c0c0c] transition-colors">
-                                    <div className="flex-1">
-                                        <p className="text-[10px] text-gray-600 uppercase font-black mb-1.5 tracking-tighter">Registry Email</p>
-                                        <p className="text-xl font-bold tracking-tight text-white/90">a.sterling@architect.ai</p>
-                                    </div>
-                                    <span className="material-symbols-outlined text-[#85adff] text-2xl opacity-40">verified_user</span>
-                                </div>
-                            </div>
-                        </section>
-
-                        {/* Generative Engine */}
-                        <section className="mb-20">
-                            <div className="flex items-center gap-3 mb-8 text-white/20">
-                                <span className="material-symbols-outlined text-lg">model_training</span>
-                                <h3 className="text-[11px] font-black uppercase tracking-[3px]">Generative Engine</h3>
-                            </div>
-                            <div className="bg-[#080808] border border-white/[0.05] p-10 rounded-[32px]">
-                                <div className="flex justify-between items-start mb-16">
-                                    <div>
-                                        <h4 className="text-3xl font-bold mb-4 tracking-tighter italic">Inference Precision</h4>
-                                        <p className="text-gray-500 text-base max-w-sm leading-relaxed font-medium">Higher precision increases generation time.</p>
-                                    </div>
-                                    <div className="bg-black p-2 rounded-full border border-white/[0.03] flex items-center gap-5 pr-6">
-                                        <span className="text-[10px] font-black text-gray-700 tracking-[2px] ml-4">STANDARD</span>
-                                        <div className="w-32 h-2 bg-[#111] rounded-full overflow-hidden">
-                                            <div className="w-full h-full bg-gradient-to-r from-pink-500 to-indigo-500 shadow-[0_0_15px_rgba(236,72,153,0.5)]"></div>
-                                        </div>
-                                        <span className="text-[10px] font-black text-pink-500 tracking-[2px]">ULTRA</span>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-12">
-                                    {[
-                                        { label: 'Creativity Bias', val: '0.82', icon: 'auto_awesome' },
-                                        { label: 'Detail Density', val: 'HIGH', icon: 'layers' },
-                                        { label: 'Optimization Speed', val: 'TURBO', icon: 'bolt' }
-                                    ].map(item => (
-                                        <div key={item.label} className="group">
-                                            <div className="flex justify-between text-[10px] font-black mb-5 tracking-widest text-gray-600 group-hover:text-[#85adff] transition-colors">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-sm">{item.icon}</span>
-                                                    <span className="uppercase">{item.label}</span>
+                                        <div className="flex flex-col lg:flex-row gap-12 items-center lg:items-start">
+                                            <div className="relative group/avatar">
+                                                <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-2 border-white/10 p-1 bg-white/5 group-hover/avatar:border-blue-500/50 transition-all duration-500">
+                                                    <img
+                                                        src={`https://ui-avatars.com/api/?name=${user?.name || "Architect"}&background=0D8ABC&color=fff&size=256`}
+                                                        alt="Avatar"
+                                                        className="w-full h-full rounded-[2.2rem] object-cover"
+                                                    />
                                                 </div>
-                                                <span className="text-[#85adff]">{item.val}</span>
                                             </div>
-                                            <div className="relative h-[3px] bg-white/[0.03] rounded-full">
-                                                <div className="absolute left-[70%] top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-[#85adff] border-[3px] border-black shadow-[0_0_15px_rgba(133,173,255,0.6)] cursor-pointer"></div>
+
+                                            <div className="flex-1 w-full space-y-10">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                    <div className="space-y-3">
+                                                        <label className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em] ml-2">Identity Token</label>
+                                                        <input
+                                                            type="text"
+                                                            value={formData.name}
+                                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                            className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-sm font-semibold focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <label className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em] ml-2">Registry Mail</label>
+                                                        <div className="relative">
+                                                            <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
+                                                            <input
+                                                                type="email"
+                                                                value={formData.email}
+                                                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                                className="w-full bg-white/5 border border-white/5 rounded-2xl px-14 py-4 text-sm font-semibold focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    disabled={loading}
+                                                    onClick={handleProfileUpdate}
+                                                    className={`px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all shadow-2xl ${saved
+                                                            ? "bg-green-600/20 text-green-500 border border-green-500/30"
+                                                            : "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20 border border-blue-400/20"
+                                                        } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                >
+                                                    {loading ? "Decrypting..." : saved ? "Synced Success" : "Save Configurations"}
+                                                </button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </section>
-                    </div>
-                </div>
-
-                {/* RIGHT PANEL - Cố định bên phải, cuộn độc lập */}
-                <aside className="w-[380px] border-l border-white/[0.05] flex flex-col bg-[#000000] h-screen">
-                    <div className="flex-1 overflow-y-auto p-10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                        <h3 className="text-[11px] font-black uppercase tracking-[4px] text-white/20 mb-10">System Status</h3>
-
-                        <div className="space-y-6 mb-12">
-                            {[
-                                { label: 'Neural Engine', status: 'OPERATIONAL', color: 'bg-[#85adff]' },
-                                { label: 'Vector DB', status: 'SYNCED', color: 'bg-green-500' },
-                                { label: 'Auth Bridge', status: 'ACTIVE', color: 'bg-purple-500' }
-                            ].map(item => (
-                                <div key={item.label} className="flex justify-between items-center group">
-                                    <div className="flex items-center gap-3">
-                                        <span className={`w-2 h-2 rounded-full ${item.color} shadow-[0_0_10px_rgba(133,173,255,0.4)]`}></span>
-                                        <span className="text-[14px] text-gray-400 font-bold group-hover:text-white transition-colors">{item.label}</span>
                                     </div>
-                                    <span className="text-[#85adff] font-black text-[10px] tracking-widest bg-[#85adff]/5 px-2 py-1 rounded-md">{item.status}</span>
                                 </div>
-                            ))}
-                        </div>
+                            )}
 
-                        {/* Core Load Chart */}
-                        <div className="bg-[#080808] p-8 rounded-3xl border border-white/[0.05] mb-14">
-                            <div className="flex justify-between items-end mb-6">
-                                <span className="text-[11px] font-black text-gray-600 uppercase tracking-[2px]">Core Load</span>
-                                <span className="text-xl font-black text-white tracking-tighter">42.8<span className="text-xs text-[#85adff]">%</span></span>
-                            </div>
-                            <div className="flex items-end gap-1.5 h-14">
-                                {[15, 30, 45, 25, 35, 45, 85, 40, 20, 15, 25, 35].map((h, i) => (
-                                    <div key={i} style={{ height: `${h}%` }} className={`flex-1 rounded-full transition-all ${i === 6 ? 'bg-[#85adff] shadow-[0_0_15px_#85adff]' : 'bg-white/5'}`}></div>
-                                ))}
-                            </div>git remote remove origin
-                        </div>
-
-                        <h3 className="text-[11px] font-black uppercase tracking-[4px] text-white/20 mb-10">Activity Log</h3>
-                        <div className="relative pl-6">
-                            {/* Vertical line */}
-                            <div className="absolute left-[18px] top-0 bottom-0 w-px bg-white/10"></div>
-
-
-
-                            <div className="relative pl-5">
-                                {/* Timeline line */}
-                                <div className="absolute left-[14px] top-0 bottom-0 w-px bg-white/10"></div>
-
-                                <div className="space-y-5">
-                                    {logs.slice(0, 5).map((log, idx) => (
-                                        <div key={idx} className="group relative flex gap-3">
-
-                                            {/* Dot */}
-                                            <div className="absolute left-[-5px] top-1.5 w-1.5 h-1.5 rounded-full bg-[#85adff] shadow-[0_0_6px_#85adff]"></div>
-
-                                            {/* Icon */}
-                                            <div className="w-8 h-8 shrink-0 rounded-lg bg-white/5 flex items-center justify-center border border-white/5 group-hover:border-[#85adff]/40 transition">
-                                                <span className="material-symbols-outlined text-[16px] text-gray-500 group-hover:text-[#85adff] transition">
-                                                    {log.icon}
-                                                </span>
+                            {activeTab === "security" && (
+                                <div className="space-y-8 pb-20">
+                                    <div className="bg-white/5 border border-white/10 rounded-[32px] p-10 backdrop-blur-md">
+                                        <h3 className="text-xl font-bold mb-8 flex items-center gap-3">
+                                            <Shield className="text-blue-500" size={24} /> Security Protocols
+                                        </h3>
+                                        <div className="space-y-8 max-w-xl">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest ml-1">Master Access Key</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type={showCurrentPassword ? "text" : "password"}
+                                                        value={formData.current_password}
+                                                        onChange={(e) => setFormData({ ...formData, current_password: e.target.value })}
+                                                        placeholder="Current Password"
+                                                        className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-sm font-semibold focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                                                    />
+                                                    <button
+                                                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                                        className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                                                    >
+                                                        {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                    </button>
+                                                </div>
                                             </div>
-
-                                            {/* Content */}
-                                            <div className="leading-tight">
-                                                <p className="text-[13px] font-semibold text-white group-hover:text-[#85adff] transition">
-                                                    {log.title}
-                                                </p>
-
-                                                {/* ❌ bỏ line-clamp để hiện full */}
-                                                <p className="text-[11px] text-gray-400 mt-0.5">
-                                                    {log.desc}
-                                                </p>
-
-                                                <p className="text-[9px] font-bold text-gray-600 uppercase mt-1 tracking-wide">
-                                                    {log.time}
-                                                </p>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest ml-1">New Neural Signature</label>
+                                                <input
+                                                    type="password"
+                                                    value={formData.new_password}
+                                                    onChange={(e) => setFormData({ ...formData, new_password: e.target.value })}
+                                                    placeholder="New Password"
+                                                    className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-sm font-semibold focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                                                />
                                             </div>
+                                            <button
+                                                disabled={loading}
+                                                onClick={handlePasswordUpdate}
+                                                className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white border border-blue-400/20 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20"
+                                            >
+                                                {loading ? "Updating..." : "Rotate Security Keys"}
+                                            </button>
                                         </div>
-                                    ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
-                            {/* Button */}
-                            <div className="mt-10">
-                                <button className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-[12px] font-semibold text-gray-300 hover:bg-white/10 transition">
-                                    VIEW FULL ARCHIVE
-                                </button>
-                            </div>
-
-
-                        </div>
-                    </div>
-
-                    {/* Footer Right Panel */}
-                    <div className="p-8 border-t border-white/[0.05] bg-[#050505]">
-                        <div className="flex items-center justify-center gap-3 text-gray-700">
-                            <span className="material-symbols-outlined text-sm animate-pulse">encrypted</span>
-                            <p className="text-[9px] uppercase font-black tracking-[3px]">Quantum Encryption v2</p>
-                        </div>
-                    </div>
-                </aside>
+                            {activeTab === "engine" && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 backdrop-blur-md">
+                                        <h3 className="text-xl font-bold mb-8 flex items-center gap-3">
+                                            <Zap className="text-blue-500" size={24} /> Neural Precision
+                                        </h3>
+                                        <div className="space-y-6">
+                                            {[
+                                                { label: "Matrix Density", val: 82 },
+                                                { label: "Context Window", val: 95 },
+                                                { label: "Rendering Speed", val: 75 },
+                                            ].map(s => (
+                                                <div key={s.label}>
+                                                    <div className="flex justify-between text-[11px] font-bold mb-2 uppercase text-gray-400">
+                                                        <span>{s.label}</span>
+                                                        <span>{s.val}%</span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-blue-500" style={{ width: `${s.val}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
             </main>
+
+            {showRightSidebar && (
+                <SidebarRight
+                    user={user}
+                    logs={[
+                        `${new Date().toLocaleTimeString()} - Identity Link Synchronized`,
+                        `${new Date().toLocaleTimeString()} - Security layer active`
+                    ]}
+                    addLog={() => { }}
+                />
+            )}
         </div>
     );
 }

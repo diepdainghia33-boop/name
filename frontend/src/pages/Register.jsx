@@ -1,35 +1,40 @@
 import { useState } from "react";
-import { loginApi } from "../api/auth.api";
+import { registerApi } from "../api/auth.api";
 import { useNavigate, Link } from "react-router-dom";
 
-export default function AuthPage() {
+export default function RegisterPage() {
+    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
 
     const navigate = useNavigate();
 
-    const handleLogin = async (e) => {
+    const handleRegister = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError("");
+        setSuccessMessage("");
 
         try {
-            const res = await loginApi({
+            const res = await registerApi({
+                name,
                 email,
                 password
             });
 
-            // lưu token + user
-            localStorage.setItem("token", res.data.token);
-            localStorage.setItem("user", JSON.stringify(res.data.user));
-
-            // chuyển trang
-            navigate("/dashboard");
+            // Hiển thị thông báo thành công từ backend
+            setSuccessMessage(res.data.message);
+            
+            // Tùy chọn: Tự động chuyển trang sau vài giây
+            setTimeout(() => {
+                navigate("/login");
+            }, 5000);
 
         } catch (err) {
-            setError("Sai email hoặc mật khẩu");
+            setError(err.response?.data?.message || "Lỗi đăng ký. Vui lòng kiểm tra lại thông tin.");
         }
 
         setLoading(false);
@@ -43,14 +48,9 @@ export default function AuthPage() {
             <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-500/10 blur-[180px] rounded-full"></div>
 
             {/* HEADER */}
-            <header className="fixed top-0 w-full z-50 flex justify-between items-center px-10 h-20 bg-black/20 backdrop-blur-xl border-b border-white/5">
-                <Link to="/" className="text-xl font-black tracking-tighter text-white uppercase italic">
-                    Architect<span className="text-blue-500">.AI</span>
-                </Link>
-
-                <div className="hidden md:flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Verifying Identity</span>
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+            <header className="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-20 bg-black/40 backdrop-blur-xl border-b border-white/5">
+                <div className="text-lg font-semibold tracking-wide text-blue-400">
+                    Architect AI
                 </div>
             </header>
 
@@ -63,11 +63,15 @@ export default function AuthPage() {
                         <img
                             src="https://images.unsplash.com/photo-1506744038136-46273834b3fb"
                             className="absolute inset-0 w-full h-full object-cover opacity-30 grayscale"
+                            alt="background"
                         />
                         <div className="relative z-10 max-w-lg">
                             <h2 className="text-5xl font-bold mb-6">
-                                Ethereal Digital Structures
+                                Join The <br /> Neural Network
                             </h2>
+                            <p className="text-gray-400 text-lg leading-relaxed">
+                                Đăng ký tài khoản để truy cập vào hệ thống lõi.
+                            </p>
                         </div>
                     </div>
 
@@ -76,17 +80,32 @@ export default function AuthPage() {
 
                         <div className="w-full max-w-md">
 
-                            <div className="mb-10">
+                            <div className="mb-8">
                                 <h1 className="text-3xl font-bold mb-2">
-                                    Welcome Back
+                                    Create Account
                                 </h1>
                                 <p className="text-gray-400 text-sm">
-                                    Please enter your details to sign in.
+                                    Hãy nhập thông tin để đăng ký tham gia.
                                 </p>
                             </div>
 
                             {/* FORM */}
-                            <form className="space-y-6" onSubmit={handleLogin}>
+                            <form className="space-y-5" onSubmit={handleRegister}>
+                                
+                                {/* NAME */}
+                                <div>
+                                    <label className="text-xs text-gray-400 uppercase">
+                                        Full Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        required
+                                        placeholder="Tên của bạn"
+                                        className="w-full h-12 mt-2 px-4 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    />
+                                </div>
 
                                 {/* EMAIL */}
                                 <div>
@@ -97,8 +116,9 @@ export default function AuthPage() {
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="architect@studio.ai"
-                                        className="w-full h-12 mt-2 px-4 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        required
+                                        placeholder="ai@architect.com"
+                                        className="w-full h-12 mt-2 px-4 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     />
                                 </div>
 
@@ -111,19 +131,24 @@ export default function AuthPage() {
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        minLength={6}
                                         placeholder="••••••••"
-                                        className="w-full h-12 mt-2 px-4 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                        className="w-full h-12 mt-2 px-4 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     />
-                                    <div className="flex justify-end mt-2">
-                                        <Link to="/forgot-password" title="Forgot Password" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                                            Forgot password?
-                                        </Link>
-                                    </div>
                                 </div>
+
+                                {/* SUCCESS MESSAGE */}
+                                {successMessage && (
+                                    <div className="p-4 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse transition-all"></div>
+                                        {successMessage}
+                                    </div>
+                                )}
 
                                 {/* ERROR */}
                                 {error && (
-                                    <div className="text-red-400 text-sm">
+                                    <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm">
                                         {error}
                                     </div>
                                 )}
@@ -132,17 +157,17 @@ export default function AuthPage() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full h-12 rounded-lg bg-gradient-to-r from-blue-500 to-blue-400 font-semibold"
+                                    className="w-full h-12 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 font-semibold mt-2 hover:opacity-90 disabled:opacity-50 transition-opacity"
                                 >
-                                    {loading ? "Signing in..." : "Sign In"}
+                                    {loading ? "Đang xử lý..." : "Sign Up"}
                                 </button>
                             </form>
 
-                            {/* FOOT */}
-                            <p className="text-center mt-10 text-sm text-gray-400">
-                                New here?{" "}
-                                <Link to="/register" className="text-blue-400 hover:underline">
-                                    Request access
+                            {/* FOOTER */}
+                            <p className="text-center mt-8 text-sm text-gray-400">
+                                Sudah punya tài khoản?{" "}
+                                <Link to="/login" className="text-blue-400 hover:underline">
+                                    Đăng nhập ngay
                                 </Link>
                             </p>
                         </div>

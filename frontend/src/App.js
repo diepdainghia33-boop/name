@@ -7,6 +7,7 @@ import Chat from "./pages/Chat";               // default export
 import Dashboard from "./pages/Dashboard";    // default export
 import AuthPage from "./pages/Login";         // default export
 import ForgotPassword from "./pages/ForgotPassword"; // default export
+import RegisterPage from "./pages/Register";
 
 // Home Components
 import Navbar from "./components/Home/Navbar";
@@ -37,6 +38,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<AuthPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/chat" element={<Chat />} />
