@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+redis
+python-multipart
+pydantic
+mysql-connector-python
+sqlalchemy
+pymysql
+pytesseract
+Pillow
+transformers
+torch
+scipy
+groq

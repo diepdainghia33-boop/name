@@ -27,5 +27,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Chat Routes
     Route::get('/conversations', 'App\Http\Controllers\ChatController@getConversations');
     Route::get('/conversations/{id}/messages', 'App\Http\Controllers\ChatController@getMessages');
+    Route::delete('/conversations/{id}', 'App\Http\Controllers\ChatController@deleteConversation');
     Route::post('/messages/send', 'App\Http\Controllers\ChatController@sendMessage');
 });

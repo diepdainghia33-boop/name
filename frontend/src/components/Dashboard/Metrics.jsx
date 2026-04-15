@@ -1,4 +1,4 @@
-import { Shield, Cpu, Activity } from "lucide-react";
+import { Shield, Cpu, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Metrics({ data }) {
@@ -36,10 +36,10 @@ export default function Metrics({ data }) {
                 delay={0.2}
             />
             <Card
-                icon={<Activity size={24} />}
-                label="NETWORK"
-                title="Global Latency"
-                value={data.latency + " ms"}
+                icon={<MessageSquare size={24} />}
+                label="INTERACTIONS"
+                title="Total Conversations"
+                value={data.total_messages || 0}
                 color="from-blue-500 to-cyan-400"
                 textColor="text-cyan-400"
                 delay={0.3}

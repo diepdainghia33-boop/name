@@ -66,8 +66,8 @@ export default function Header({ tab, setTab, toggleSidebar, rightOpen }) {
                                         <div key={n.id} className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer group">
                                             <div className="flex gap-3 items-start">
                                                 <div className={`mt-1 p-1.5 rounded-lg ${n.type === "success" ? "bg-green-500/10 text-green-400" :
-                                                        n.type === "warning" ? "bg-yellow-500/10 text-yellow-400" :
-                                                            "bg-blue-500/10 text-blue-400"
+                                                    n.type === "warning" ? "bg-yellow-500/10 text-yellow-400" :
+                                                        "bg-blue-500/10 text-blue-400"
                                                     }`}>
                                                     {n.type === "success" ? <CheckCircle size={14} /> :
                                                         n.type === "warning" ? <AlertTriangle size={14} /> : <Info size={14} />}
