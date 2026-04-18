@@ -9,8 +9,15 @@ class Message extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['conversation_id', 'content', 'role', 'type', 'image_path', 'tokens'];
+    protected $fillable = [
+        'conversation_id', 'content', 'role', 'type',
+        'image_path', 'file_path', 'file_type', 'search_mode', 'tokens'
+    ];
     protected $touches = ['conversation'];
+    protected $attributes = [
+        'tokens' => 0,
+        'search_mode' => false,
+    ];
 
     public function conversation()
     {

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-import redis, os, mysql.connector, json, io, re, subprocess
+import redis, os, mysql.connector, json, io, re, subprocess, base64
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel
@@ -8,6 +8,11 @@ from PIL import Image as PILImage
 import pytesseract
 from ota_analyzer import ota_engine
 from groq import Groq
+from anthropic import Anthropic
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
 
 app = FastAPI(title="Architect AI Service")
 
@@ -21,6 +26,9 @@ app.add_middleware(
 
 GROQ_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
+
+# Claude client - for multi-modal (PDF/Excel) and web search
+anthropic = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 SYSTEM_PROMPT = """Bạn là Architect AI - trợ lý thông minh chuyên sâu về kiến trúc phần mềm, tư vấn kỹ thuật, và phân tích hóa đơn.
 
@@ -189,6 +197,161 @@ async def chat(req: ChatRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Claude-powered /api/chat/v2 endpoint (multi-modal + web search) ───────────────────
+
+class ChatRequestV2(BaseModel):
+    history: List[ChatMessage] = []
+    system_prompt: Optional[str] = None
+    files: Optional[List[dict]] = []  # [{"type": "pdf", "data": "base64..."}]
+    search_enabled: bool = False
+
+@app.post("/api/chat/v2")
+async def chat_v2(req: ChatRequestV2):
+    """
+    Claude-powered endpoint supporting:
+    - PDF/Excel file analysis via document tool
+    - Web search via browser tool
+    """
+    try:
+        system = req.system_prompt or SYSTEM_PROMPT
+
+        # Build messages for Claude
+        messages = [{"role": "user", "content": system}]
+
+        # Build user message content (can include text + documents)
+        user_content = []
+
+        # Add text from history
+        for msg in req.history:
+            if msg.content and msg.content.strip():
+                role = "assistant" if msg.role in ("bot", "assistant") else "user"
+                messages.append({"role": role, "content": msg.content})
+
+        # Add current message with file attachments if present
+        current_text = req.history[-1].content if req.history else ""
+
+        if req.files:
+            # Files are base64 encoded
+            for file in req.files:
+                file_data = file.get("data", "")
+                file_type = file.get("type", "").lower()
+
+                if file_type == "pdf":
+                    user_content.append({
+                        "type": "document",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "application/pdf",
+                            "data": file_data
+                        }
+                    })
+                elif file_type in ("xlsx", "xls", "csv"):
+                    # Excel files
+                    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    if file_type == "csv":
+                        media_type = "text/csv"
+                    user_content.append({
+                        "type": "document",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": file_data
+                        }
+                    })
+                elif file_type in ("png", "jpg", "jpeg", "gif"):
+                    # Images
+                    media_type = f"image/{file_type}"
+                    user_content.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": file_data
+                        }
+                    })
+
+            # Add text content with files
+            if current_text:
+                user_content.insert(0, {"type": "text", "text": current_text})
+
+            messages.append({"role": "user", "content": user_content})
+        else:
+            # Text-only message
+            if current_text:
+                messages.append({"role": "user", "content": current_text})
+
+        # Define tools for Claude
+        tools = []
+        if req.search_enabled:
+            tools.append({
+                "name": "browser",
+                "description": "Search the web for current information",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "The search query"}
+                    },
+                    "required": ["query"]
+                }
+            })
+
+        # Call Claude
+        extra_kwargs = {}
+        if tools:
+            extra_kwargs["tools"] = tools
+
+        response = anthropic.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=2048,
+            messages=messages,
+            **extra_kwargs
+        )
+
+        # Handle response
+        if hasattr(response, 'content') and len(response.content) > 0:
+            # Check if Claude used a tool (for web search)
+            result_content = ""
+            for block in response.content:
+                if hasattr(block, 'text'):
+                    result_content += block.text
+        else:
+            result_content = str(response)
+
+        tokens_used = response.usage.input_tokens + response.usage.output_tokens if hasattr(response, 'usage') else 0
+
+        return {
+            "content": result_content,
+            "tokens": tokens_used,
+            "model": "claude-3-5-sonnet-20241022"
+        }
+
+    except Exception as e:
+        # Fallback to Groq if Claude fails
+        try:
+            system = req.system_prompt or SYSTEM_PROMPT
+            groq_messages = [{"role": "system", "content": system}]
+
+            for msg in req.history:
+                role = "assistant" if msg.role in ("bot", "assistant") else "user"
+                if msg.content and msg.content.strip():
+                    groq_messages.append({"role": role, "content": msg.content})
+
+            completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=groq_messages,
+                max_tokens=2048,
+                temperature=0.7,
+            )
+
+            return {
+                "content": completion.choices[0].message.content,
+                "tokens": completion.usage.total_tokens,
+                "model": "llama-3.3-70b-versatile (fallback)"
+            }
+        except Exception as fallback_error:
+            raise HTTPException(status_code=500, detail=f"Claude error: {str(e)}, Fallback error: {str(fallback_error)}")
 
 
 # ─── Legacy endpoint kept for backwards compatibility ───────────────────────────

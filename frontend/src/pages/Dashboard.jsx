@@ -46,14 +46,11 @@ export default function Dashboard() {
         try {
             const token = localStorage.getItem("token");
 
-            // ⚡ CALL SONG SONG
-            const [dashboardRes, aiRes] = await Promise.allSettled([
+            // ⚡ CALL SONG SONG (removed broken AI stats endpoint)
+            const [dashboardRes] = await Promise.allSettled([
                 axios.get("http://127.0.0.1:8000/api/dashboard", {
                     headers: { Authorization: `Bearer ${token}` },
                     timeout: 4000
-                }),
-                axios.get("http://127.0.0.1:8001/api/stats", {
-                    timeout: 1500
                 })
             ]);
 
@@ -69,14 +66,8 @@ export default function Dashboard() {
                 time: new Date(l.created_at).toLocaleTimeString()
             }));
 
-            const aiStats =
-                aiRes.status === "fulfilled" ? aiRes.value.data : {};
-
             const mergedMetrics = {
                 ...metrics,
-                total_messages: aiStats.total_messages || 0,
-                tokens: aiStats.total_tokens || 0,
-                health: aiStats.health || 0
             };
 
             // ⚡ SET STATE ÍT NHẤT CÓ THỂ

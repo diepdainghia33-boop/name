@@ -41,10 +41,13 @@ class ChatController extends Controller
             'content'         => 'nullable|string|max:10000',
             'conversation_id' => 'nullable|integer',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'file'            => 'nullable|file|mimes:pdf,xlsx,xls,csv|max:10240',
+            'search_mode'     => 'nullable|boolean',
         ]);
 
         $userId         = Auth::id();
         $conversationId = $request->conversation_id;
+        $searchMode     = $request->boolean('search_mode');
 
         // ── Resolve or create conversation ────────────────────────────────────
         if ($conversationId) {
@@ -71,6 +74,20 @@ class ChatController extends Controller
             $type      = 'image';
         }
 
+        // ── Handle document upload (PDF/Excel) ─────────────────────────────────
+        $fileData = null;
+        $fileType = null;
+        $filePath = null;
+
+        if ($request->hasFile('file')) {
+            $file      = $request->file('file');
+            $fileData  = base64_encode(file_get_contents($file->getRealPath()));
+            $fileType  = strtolower($file->getClientOriginalExtension());
+            $path      = $file->store('chat_files', 'public');
+            $filePath  = asset('storage/' . $path);
+            $type      = 'document';
+        }
+
         // ── Save user message ──────────────────────────────────────────────────
         $userMessage = Message::create([
             'conversation_id' => $conversationId,
@@ -78,6 +95,9 @@ class ChatController extends Controller
             'role'            => 'user',
             'type'            => $type,
             'image_path'      => $imagePath,
+            'file_path'       => $filePath,
+            'file_type'       => $fileType,
+            'search_mode'     => $searchMode,
         ]);
 
         // ── Build conversation history for AI ──────────────────────────────────
@@ -85,24 +105,49 @@ class ChatController extends Controller
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(fn ($m) => [
-                'role'    => $m->role,   // 'user' or 'bot' — AI service maps bot→assistant
+                'role'    => $m->role,
                 'content' => $m->content ?? '',
             ])
             ->toArray();
 
+        // ── Prepare files array for AI v2 ─────────────────────────────────────
+        $files = [];
+        if ($fileData && $fileType) {
+            $files[] = [
+                'type' => $fileType,
+                'data' => $fileData,
+            ];
+        }
+
+        // ── Determine which AI endpoint to call ───────────────────────────────
+        $useV2 = !empty($files) || $searchMode;
+
         // ── Call AI service ────────────────────────────────────────────────────
         $aiText    = null;
         $aiTokens  = 0;
+        $aiModel   = 'llama-3.3-70b-versatile';
 
         try {
-            $aiResponse = Http::timeout(30)->post("{$this->aiServiceUrl}/api/chat", [
-                'history' => $history,
-            ]);
+            if ($useV2) {
+                // Use Claude-powered v2 endpoint
+                $aiResponse = Http::timeout(60)->post("{$this->aiServiceUrl}/api/chat/v2", [
+                    'history'        => $history,
+                    'files'          => $files,
+                    'search_enabled' => $searchMode,
+                ]);
+                $aiModel = 'claude-3-5-sonnet-20241022';
+            } else {
+                // Use original Groq endpoint
+                $aiResponse = Http::timeout(30)->post("{$this->aiServiceUrl}/api/chat", [
+                    'history' => $history,
+                ]);
+            }
 
             if ($aiResponse->successful()) {
                 $aiData   = $aiResponse->json();
                 $aiText   = $aiData['content']  ?? null;
                 $aiTokens = $aiData['tokens']   ?? 0;
+                $aiModel  = $aiData['model']    ?? $aiModel;
             } else {
                 Log::warning('AI service returned non-2xx', ['status' => $aiResponse->status()]);
             }
@@ -112,9 +157,15 @@ class ChatController extends Controller
 
         // Fallback if AI service is down
         if (!$aiText) {
-            $aiText = $imagePath
-                ? "Tôi đã nhận được hình ảnh của bạn. Xin lỗi, dịch vụ AI đang bận — hãy thử lại sau."
-                : "Xin lỗi, dịch vụ AI đang tạm thời không khả dụng. Hãy đảm bảo server AI (port 8001) đang chạy.";
+            if ($fileData) {
+                $aiText = "Tôi đã nhận được file của bạn. Xin lỗi, dịch vụ AI đang bận — hãy thử lại sau.";
+            } elseif ($searchMode) {
+                $aiText = "Xin lỗi, dịch vụ tìm kiếm web đang tạm thời không khả dụng. Hãy thử lại sau.";
+            } elseif ($imagePath) {
+                $aiText = "Tôi đã nhận được hình ảnh của bạn. Xin lỗi, dịch vụ AI đang bận — hãy thử lại sau.";
+            } else {
+                $aiText = "Xin lỗi, dịch vụ AI đang tạm thời không khả dụng. Hãy đảm bảo server AI (port 8001) đang chạy.";
+            }
         }
 
         // ── Save bot message ───────────────────────────────────────────────────

@@ -77,7 +77,15 @@ export default function RightPanel({
                                             {conv.title || "New conversation"}
                                         </p>
                                         <p className="text-[9px] font-black uppercase tracking-widest text-gray-600 mt-0.5 opacity-60">
-                                            {new Date(conv.updated_at || conv.created_at).toLocaleDateString("vi-VN")}
+                                            {(() => {
+                                                const date = conv.updated_at || conv.created_at;
+                                                if (!date) return null;
+                                                try {
+                                                    return new Date(date).toLocaleDateString("vi-VN");
+                                                } catch {
+                                                    return null;
+                                                }
+                                            })()}
                                         </p>
                                     </div>
 

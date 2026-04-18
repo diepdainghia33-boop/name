@@ -181,13 +181,14 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, user
                     const isUser      = msg.role === "user";
                     const userInitial = user?.name?.[0]?.toUpperCase() || "U";
                     const sentimentClass = msg.sentiment?.ota_class || "";
+                    const messageKey = msg.id || `msg-${msg.role}-${index}-${Date.now()}`;
 
                     return (
                         <motion.div
                             initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.25, ease: "easeOut" }}
-                            key={msg.id ?? `${msg.role}-${index}`}
+                            key={messageKey}
                             className={`flex gap-4 ${isUser ? "flex-row-reverse" : "flex-row"}`}
                         >
                             {/* Avatar */}

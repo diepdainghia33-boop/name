@@ -67,7 +67,7 @@ export default function Chat() {
             }, 300);
             return () => clearTimeout(t);
         }
-    }, [messages.length, isLoading, activeConversationId, user]);
+    }, [messages.length, isLoading, activeConversationId, user?.name]);
 
     useEffect(() => {
         scrollToBottom();
@@ -117,13 +117,18 @@ export default function Chat() {
     }, [activeConversationId]);
 
     // ── Send a message ─────────────────────────────────────────────────────────
-    const handleSendMessage = useCallback(async (content, file = null) => {
-        if (!content.trim() && !file) return;
+    const handleSendMessage = useCallback(async (content, image = null, document = null, searchMode = false) => {
+        if (!content.trim() && !image && !document) return;
 
         const formData = new FormData();
         if (content)                  formData.append("content", content);
         if (activeConversationId)     formData.append("conversation_id", activeConversationId);
-        if (file)                     formData.append("image", file);
+        if (image)                    formData.append("image", image);
+        if (document)                 formData.append("file", document);
+        if (searchMode)               formData.append("search_mode", "1");
+
+        // Determine message type
+        const msgType = document ? "document" : (image ? "image" : "text");
 
         // Optimistic user message
         const tempId = `temp-${Date.now()}`;
@@ -131,9 +136,12 @@ export default function Chat() {
             id: tempId,
             content,
             role: "user",
-            type: file ? "image" : "text",
-            image_path: file ? URL.createObjectURL(file) : null,
+            type: msgType,
+            image_path: image ? URL.createObjectURL(image) : null,
+            file_path: document ? URL.createObjectURL(document) : null,
+            file_type: document ? document.name.split('.').pop() : null,
             created_at: new Date().toISOString(),
+            search_mode: searchMode,
         };
         setMessages(prev => prev.filter(m => m.id !== "welcome").concat(tempUserMsg));
         setIsLoading(true);
@@ -174,7 +182,7 @@ export default function Chat() {
                     { ...tempUserMsg, id: `u-${Date.now()}` },
                     {
                         id: `err-${Date.now()}`,
-                        content: "⚠️ Không thể kết nối đến server. Hãy kiểm tra:\n- Laravel backend (port 8000) đang chạy\n- AI service (port 8001) đang chạy",
+                        content: "⚠️ Không thể kết nối đến server. Hãy kiểm tra:\n- Laravel backend (port 8000) đang chạy\n- AI service (port 8001) đang chạy\n- API key đã được cấu hình đúng",
                         role: "bot",
                         created_at: new Date().toISOString(),
                     }
