@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import redis, os, mysql.connector, json, io, re, subprocess, base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 from pydantic import BaseModel
 from PIL import Image as PILImage
@@ -101,7 +101,7 @@ def get_stats():
     }
 
 @app.get("/api/analytics")
-def get_analytics():
+def get_analytics(request: Request):
     data = []
     days = []
     intents = [
@@ -109,20 +109,90 @@ def get_analytics():
         {"name": "Architectural Consulting", "value": 0, "color": "#f472b6"},
         {"name": "General Chat", "value": 100, "color": "#9ca3af"}
     ]
+
+    # Get days parameter from query (default 7)
+    try:
+        days_param = int(request.query_params.get("days", "7"))
+    except:
+        days_param = 7
+
+    # Limit valid range
+    if days_param not in [1, 7, 30]:
+        days_param = 7
+
     try:
         db = get_db()
         if db:
             cursor = db.cursor(dictionary=True)
-            cursor.execute(
-                "SELECT DATE(created_at) as day, COUNT(*) as count FROM messages "
-                "WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) "
-                "GROUP BY DATE(created_at) ORDER BY day ASC"
-            )
-            rows = cursor.fetchall()
-            for row in rows:
-                days.append(row['day'].strftime("%a"))
-                data.append(row['count'])
 
+            # Query based on time range
+            if days_param == 1:
+                # 24 hours: group by hour
+                cursor.execute(
+                    "SELECT HOUR(created_at) as hour, COUNT(*) as count FROM messages "
+                    "WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) "
+                    "GROUP BY HOUR(created_at) ORDER BY hour ASC"
+                )
+                rows = cursor.fetchall()
+                # Create 24-hour array with zeros
+                hour_data = [0] * 24
+                hour_dict = {row['hour']: row['count'] for row in rows}
+                for h in range(24):
+                    hour_data[h] = hour_dict.get(h, 0)
+                data = hour_data
+                days = [f"{h}:00" for h in range(24)]
+
+            elif days_param == 7:
+                # 7 days: group by date
+                cursor.execute(
+                    "SELECT DATE(created_at) as day, COUNT(*) as count FROM messages "
+                    "WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) "
+                    "GROUP BY DATE(created_at) ORDER BY day ASC"
+                )
+                rows = cursor.fetchall()
+                # Build list of last 7 days including today
+                from datetime import timedelta
+                date_counts = {}
+                for row in rows:
+                    date_counts[row['day']] = row['count']
+                today = datetime.now().date()
+                for i in range(6, -1, -1):
+                    d = today - timedelta(days=i)
+                    days.append(d.strftime("%a"))
+                    data.append(date_counts.get(d, 0))
+
+            elif days_param == 30:
+                # 30 days: group by date
+                cursor.execute(
+                    "SELECT DATE(created_at) as day, COUNT(*) as count FROM messages "
+                    "WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) "
+                    "GROUP BY DATE(created_at) ORDER BY day ASC"
+                )
+                rows = cursor.fetchall()
+                # Build list of last 30 days
+                from datetime import timedelta
+                date_counts = {}
+                for row in rows:
+                    date_counts[row['day']] = row['count']
+                today = datetime.now().date()
+                for i in range(29, -1, -1):
+                    d = today - timedelta(days=i)
+                    days.append(d.strftime("%d/%m"))
+                    data.append(date_counts.get(d, 0))
+
+            elif days_param == 30:
+                # 30 days: group by date
+                cursor.execute(
+                    "SELECT DATE(created_at) as day, COUNT(*) as count FROM messages "
+                    "WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) "
+                    "GROUP BY DATE(created_at) ORDER BY day ASC"
+                )
+                rows = cursor.fetchall()
+                for row in rows:
+                    days.append(row['day'].strftime("%d/%m"))
+                    data.append(row['count'])
+
+            # Intent analysis (same for all ranges)
             cursor.execute("SELECT content FROM messages WHERE role='user' LIMIT 100")
             user_msgs = cursor.fetchall()
             invoice_count = sum(
@@ -143,12 +213,29 @@ def get_analytics():
                 {"name": "General Chat", "value": gen_p, "color": "#9ca3af"}
             ]
             db.close()
-    except:
+    except Exception as e:
+        print(f"Analytics error: {e}")
         pass
 
-    if not data:
-        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        data = [0, 0, 0, 0, 0, 0, 0]
+    # Fallback data if empty
+    # Fallback data if empty
+    if not data or len(data) == 0:
+        if days_param == 1:
+            days = [f"{h}:00" for h in range(24)]
+            data = [0] * 24
+        elif days_param == 7:
+            days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            data = [0, 0, 0, 0, 0, 0, 0]
+        else:  # 30
+            today = datetime.now().date()
+            days = []
+            for i in range(29, -1, -1):
+                d = today - timedelta(days=i)
+                days.append(d.strftime("%d/%m"))
+            data = [0] * 30
+        else:  # 30
+            days = ["1/1", "1/2", "1/3", "1/4", "1/5", "1/6", "1/7"]
+            data = [0, 0, 0, 0, 0, 0, 0]
 
     return {"days": days, "data": data, "intents": intents}
 
@@ -432,6 +519,36 @@ async def send_message(
                 "sentiment": ota_result,
                 "tokens": tokens_used
             }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/analytics/chatbot")
+async def get_chatbot_analytics():
+    """Get chatbot analytics data for the dashboard"""
+    try:
+        # Sample data - in production, this would query actual metrics from database
+        hours = ["00", "04", "08", "12", "16", "20", "24"]
+        messages = [12, 8, 15, 22, 18, 25, 30]
+        responses = [10, 6, 12, 20, 16, 22, 28]
+
+        return {
+            "hours": hours,
+            "user_messages": messages,
+            "ai_responses": responses,
+            "stats": {
+                "total_sessions": 247,
+                "active_users": 89,
+                "avg_response_time": 1.2,
+                "success_rate": 98.5,
+                "tokens_used": 1200000
+            },
+            "intents": [
+                {"name": "Architecture", "value": 35, "color": "#60a5fa"},
+                {"name": "Code Review", "value": 25, "color": "#f472b6"},
+                {"name": "Invoice Analysis", "value": 20, "color": "#9ca3af"},
+                {"name": "General Chat", "value": 20, "color": "#34d399"}
+            ]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

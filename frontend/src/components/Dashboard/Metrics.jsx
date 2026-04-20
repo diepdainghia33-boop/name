@@ -21,34 +21,31 @@ export default function Metrics({ data }) {
                 icon={<Shield size={24} />}
                 label="ACTIVE STATUS"
                 title="System Health"
-                value={`${data.health}%`}
+                value={`${data.health || 0}%`}
                 color="from-emerald-500 to-green-400"
                 textColor="text-emerald-400"
-                delay={0.1}
             />
             <Card
                 icon={<Cpu size={24} />}
                 label="COMPUTING"
                 title="Token Usage"
-                value={(data.tokens / 1000000).toFixed(1) + "M"}
-                color="from-purple-500 to-pink-400"
-                textColor="text-purple-400"
-                delay={0.2}
+                value={`${((data.tokens || 0) / 1000000).toFixed(1)}M`}
+                color="from-blue-500 to-cyan-400"
+                textColor="text-blue-400"
             />
             <Card
                 icon={<MessageSquare size={24} />}
                 label="INTERACTIONS"
                 title="Total Conversations"
                 value={data.total_messages || 0}
-                color="from-blue-500 to-cyan-400"
+                color="from-cyan-500 to-sky-400"
                 textColor="text-cyan-400"
-                delay={0.3}
             />
         </motion.section>
     );
 }
 
-function Card({ icon, label, title, value, color, textColor, delay }) {
+function Card({ icon, label, title, value, color, textColor }) {
     const item = {
         hidden: { opacity: 0, y: 20 },
         show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }

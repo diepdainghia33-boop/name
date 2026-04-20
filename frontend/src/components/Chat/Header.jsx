@@ -1,91 +1,149 @@
-import React, { useState, useEffect } from "react";
-import { Search, Bell, Cpu } from "lucide-react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { Search, Bell, Menu, X, ChevronDown, MessageSquare } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function Header({ searchQuery, setSearchQuery, user }) {
-  const [stats, setStats] = useState({ cpu_speed: "Init...", thermal: "--" });
+export default function Header({ searchQuery, setSearchQuery, user, onMenuToggle, onConversationsToggle, showMobileSearch }) {
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
 
-  useEffect(() => {
-    const fetchStats = () => {
-      fetch("http://127.0.0.1:8001/api/stats")
-        .then(res => res.json())
-        .then(data => setStats(data))
-        .catch(() => { });
-    };
-    fetchStats();
-    const interval = setInterval(fetchStats, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    return (
+        <header className="w-full px-4 md:px-8 py-4 border-b border-white/5 bg-[#0b0b0b]/80 backdrop-blur-xl flex items-center justify-between z-40">
+            {/* LEFT - Status & Mobile Menu */}
+            <div className="flex items-center gap-3">
+                {/* Mobile menu button */}
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onMenuToggle}
+                    className="lg:hidden p-2 rounded-xl border border-white/10 bg-white/5 text-white"
+                    aria-label="Toggle sidebar"
+                >
+                    <Menu size={20} />
+                </motion.button>
 
-  return (
-    <header className="w-full px-8 py-5 border-b border-white/5 bg-[#0b0b0b]/60 backdrop-blur-2xl flex items-center justify-between z-40">
-      {/* LEFT - Status & Page Title */}
-      <div className="flex items-center gap-6">
-        <div className="flex flex-col">
-          <h1 className="text-[13px] font-black uppercase tracking-[0.3em] text-white/90">
-            Neural Dynamics <span className="text-blue-500">v4</span>
-          </h1>
-          <div className="flex items-center gap-4 mt-1.5">
-            <div className="flex items-center gap-2">
-              <div className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></span>
-              </div>
-              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-gray-500">
-                System: <span className="text-blue-400">Stable</span>
-              </span>
+                {/* Mobile conversations toggle */}
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onConversationsToggle}
+                    className="lg:hidden p-2 rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white"
+                    aria-label="Toggle conversations"
+                >
+                    <MessageSquare size={20} />
+                </motion.button>
+
+                <div className="flex flex-col">
+                    <h1 className="text-[11px] sm:text-[13px] font-black uppercase tracking-[0.3em] text-white/90 hidden sm:block">
+                        Neural Dynamics <span className="text-blue-500">v4</span>
+                    </h1>
+                </div>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-              <Cpu size={10} className="text-purple-400" />
-              <span className="text-[9px] font-black tracking-widest text-gray-300">{stats.cpu_speed}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+            {/* RIGHT - Actions */}
+            <div className="flex items-center gap-2 sm:gap-6">
+                {/* Mobile search toggle */}
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={showMobileSearch}
+                    className="md:hidden p-2 rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white"
+                    aria-label="Search"
+                >
+                    <Search size={18} />
+                </motion.button>
 
-      {/* RIGHT - Actions & User */}
-      <div className="flex items-center gap-6">
-        {/* SEARCH BAR (REFINED) */}
-        <div className="hidden lg:flex items-center bg-white/[0.03] border border-white/10 hover:border-blue-500/30 transition-all duration-500 px-5 py-2.5 rounded-2xl w-80 focus-within:w-96 group">
-          <Search size={14} className="text-gray-500 group-focus-within:text-blue-400 transition-colors" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Query temporal records..."
-            className="bg-transparent outline-none text-[13px] ml-4 w-full placeholder-gray-600 font-semibold text-gray-200"
-          />
-        </div>
+                {/* Notifications */}
+                <div className="relative">
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowNotifications(!showNotifications)}
+                        className="relative p-2 sm:p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all group"
+                        aria-label="Notifications"
+                        aria-expanded={showNotifications}
+                    >
+                        <Bell size={16} className="text-gray-400 group-hover:text-blue-400 transition-colors" />
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_#3b82f6] border border-black"></span>
+                    </motion.button>
 
-        <div className="flex items-center gap-4">
-          {/* NOTIFICATIONS */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="relative p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all group"
-          >
-            <Bell size={18} className="text-gray-400 group-hover:text-blue-400 transition-colors" />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_#3b82f6] border border-black"></span>
-          </motion.button>
+                    {/* Notifications dropdown */}
+                    <AnimatePresence>
+                        {showNotifications && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute right-0 top-full mt-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50"
+                            >
+                                <div className="p-3 border-b border-white/5">
+                                    <h3 className="text-sm font-black uppercase tracking-wider text-white">Notifications</h3>
+                                </div>
+                                <div className="p-4 text-center text-gray-400 text-sm">
+                                    No new notifications
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
 
-          {/* USER PROFILE MOCK */}
-          <div className="flex items-center gap-4 pl-4 border-l border-white/10">
-            <div className="text-right hidden xl:block">
-              <p className="text-[12px] font-black uppercase tracking-widest text-white leading-none mb-1">{user?.name || "Architect"}</p>
-              <p className="text-[9px] font-black text-blue-500/60 uppercase tracking-tighter">Verified Identity</p>
+                {/* User Profile */}
+                <div className="relative">
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        onClick={() => setShowUserMenu(!showUserMenu)}
+                        className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-white/10"
+                        aria-expanded={showUserMenu}
+                        aria-label="User menu"
+                    >
+                        <div className="text-right hidden xl:block">
+                            <p className="text-[10px] sm:text-[12px] font-black uppercase tracking-widest text-white leading-none mb-1">
+                                {user?.name || "Architect"}
+                            </p>
+                            <p className="text-[8px] sm:text-[9px] font-black text-blue-500/60 uppercase tracking-tighter hidden sm:block">
+                                Verified Identity
+                            </p>
+                        </div>
+                        <div className="relative">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-[14px] bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-xl border border-white/10 group-hover:rotate-6 transition-transform">
+                                <span className="text-[11px] sm:text-[12px] font-black text-white">
+                                    {user?.name?.charAt(0) || "A"}
+                                </span>
+                            </div>
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-[#0b0b0b] rounded-full"></div>
+                        </div>
+                        <ChevronDown size={14} className="text-gray-400 hidden sm:block" />
+                    </motion.button>
+
+                    {/* User dropdown */}
+                    <AnimatePresence>
+                        {showUserMenu && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute right-0 top-full mt-2 w-56 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50"
+                            >
+                                <div className="p-3 border-b border-white/5">
+                                    <p className="text-sm font-bold text-white">{user?.name}</p>
+                                    <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+                                </div>
+                                <div className="p-2">
+                                    <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5 transition-colors">
+                                        Profile Settings
+                                    </button>
+                                    <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5 transition-colors">
+                                        Preferences
+                                    </button>
+                                    <hr className="my-2 border-white/10" />
+                                    <button className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors">
+                                        Sign out
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
-            <div className="relative group cursor-pointer">
-              <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-xl border border-white/10 group-hover:rotate-6 transition-transform">
-                <span className="text-[12px] font-black text-white">
-                  {user?.name?.charAt(0) || "A"}
-                </span>
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-[#0b0b0b] rounded-full"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
+        </header>
+    );
 }

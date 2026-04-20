@@ -21,15 +21,15 @@ export default function BlueprintCard({ title, onClick, delay = 0 }) {
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
 
             {/* Ambient hover glow */}
-            <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
+            <div className="absolute inset-0 bg-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
 
             <div className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
                 <ArrowUpRight size={16} className="text-white" />
             </div>
 
             <div className="absolute bottom-0 left-0 p-6 w-full">
-                <div className="w-8 h-1 bg-gradient-to-r from-blue-400 to-purple-500 mb-3 rounded-full transform origin-left group-hover:scale-x-150 transition-transform duration-300" />
-                <h3 className="text-xl font-bold text-white group-hover:text-blue-200 transition-colors">{title}</h3>
+                <div className="w-8 h-1 bg-gradient-to-r from-cyan-400 to-blue-500 mb-3 rounded-full transform origin-left group-hover:scale-x-150 transition-transform duration-300" />
+                <h3 className="text-xl font-bold text-white group-hover:text-cyan-200 transition-colors">{title}</h3>
                 <p className="text-sm text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 delay-75">
                     Click to load schematics
                 </p>

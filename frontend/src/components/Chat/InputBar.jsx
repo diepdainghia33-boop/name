@@ -1,14 +1,12 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, X, Mic, Globe, FileText, FileSpreadsheet } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Send, Paperclip, X, Mic, Globe, FileText, FileSpreadsheet, Image as ImageIcon, File, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function InputBar({ onSend, isLoading }) {
     const [inputValue, setInputValue]     = useState("");
-    const [selectedImage, setSelectedImage] = useState(null);
-    const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
-    const [documentFile, setDocumentFile] = useState(null);
-    const [documentPreview, setDocumentPreview] = useState(null);
-    const [searchMode, setSearchMode] = useState(false);
+    const [selectedFiles, setSelectedFiles] = useState([]); // Array of {file, preview, type}
+    const [searchMode, setSearchMode]       = useState(false);
+    const [isDragging, setIsDragging]       = useState(false);
     const fileInputRef = useRef(null);
     const textareaRef  = useRef(null);
 
@@ -23,57 +21,77 @@ export default function InputBar({ onSend, isLoading }) {
     // Cleanup object URLs on unmount
     useEffect(() => {
         return () => {
-            if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-            if (documentPreview) URL.revokeObjectURL(documentPreview);
+            selectedFiles.forEach(f => {
+                if (f.preview && f.preview.startsWith('blob:')) URL.revokeObjectURL(f.preview);
+            });
         };
     }, []);
+
+    const processFile = useCallback((file) => {
+        const fileType = getFileType(file);
+        let preview = null;
+
+        if (fileType === 'image') {
+            preview = URL.createObjectURL(file);
+        } else if (fileType === 'pdf' || fileType === 'excel') {
+            preview = {
+                name: file.name,
+                type: fileType,
+                size: (file.size / 1024 / 1024).toFixed(2),
+                url: URL.createObjectURL(file)
+            };
+        }
+
+        return { file, preview, type: fileType };
+    }, []);
+
+    const getFileType = (file) => {
+        if (file.type.startsWith("image/")) return "image";
+        if (file.type === "application/pdf") return "pdf";
+        if (file.type.includes("spreadsheet") || file.type.includes("excel") || file.type === "text/csv") return "excel";
+        return "unknown";
+    };
+
+    const handleFiles = useCallback((files) => {
+        const newFiles = Array.from(files).map(processFile).filter(f => f.type !== 'unknown');
+        setSelectedFiles(prev => [...prev, ...newFiles].slice(0, 5)); // Max 5 files
+    }, [processFile]);
 
     const handleSend = () => {
         if (isLoading) return;
         const trimmed = inputValue.trim();
-        if (!trimmed && !selectedImage && !documentFile) return;
-        onSend(trimmed, selectedImage, documentFile, searchMode);
+        const hasContent = trimmed || selectedFiles.length > 0;
+        if (!hasContent) return;
+
+        // Send all files as attachments
+        selectedFiles.forEach(f => {
+            if (f.type === 'image') {
+                onSend(trimmed, f.file, null, searchMode);
+            } else {
+                onSend(trimmed, null, f.file, searchMode);
+            }
+        });
+
+        if (selectedFiles.length === 0) {
+            onSend(trimmed, null, null, searchMode);
+        }
+
+        // Reset state
         setInputValue("");
-        setSelectedImage(null);
-        setImagePreviewUrl(null);
-        setDocumentFile(null);
-        setDocumentPreview(null);
+        setSelectedFiles([]);
         setSearchMode(false);
+        selectedFiles.forEach(f => {
+            if (f.preview && typeof f.preview === 'string' && f.preview.startsWith('blob:')) URL.revokeObjectURL(f.preview);
+            if (f.preview && typeof f.preview === 'object' && f.preview.url) URL.revokeObjectURL(f.preview.url);
+        });
         if (textareaRef.current) {
             textareaRef.current.style.height = "auto";
         }
     };
 
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (file.type.startsWith("image/")) {
-            // Handle image
-            if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-            setSelectedImage(file);
-            setImagePreviewUrl(URL.createObjectURL(file));
-            setDocumentFile(null);
-            setDocumentPreview(null);
-        } else if (
-            file.type === "application/pdf" ||
-            file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-            file.type === "application/vnd.ms-excel" ||
-            file.type === "text/csv"
-        ) {
-            // Handle document (PDF/Excel)
-            if (documentPreview) URL.revokeObjectURL(documentPreview);
-            setDocumentFile(file);
-            setDocumentPreview({
-                name: file.name,
-                type: file.type.includes("pdf") ? "pdf" : "excel",
-                size: (file.size / 1024 / 1024).toFixed(2), // MB
-                url: URL.createObjectURL(file)
-            });
-            setSelectedImage(null);
-            setImagePreviewUrl(null);
-        }
-        // Reset so same file can be re-selected
+    const handleFileSelect = (e) => {
+        const files = e.target.files;
+        if (files) handleFiles(files);
         e.target.value = "";
     };
 
@@ -82,110 +100,142 @@ export default function InputBar({ onSend, isLoading }) {
             e.preventDefault();
             handleSend();
         }
-        // Shift+Enter inserts a newline (default textarea behavior)
     };
 
-    const removeImage = () => {
-        if (imagePreviewUrl) {
-            URL.revokeObjectURL(imagePreviewUrl);
+    const removeFile = (index) => {
+        const file = selectedFiles[index];
+        if (file.preview) {
+            if (typeof file.preview === 'string' && file.preview.startsWith('blob:')) URL.revokeObjectURL(file.preview);
+            if (typeof file.preview === 'object' && file.preview.url) URL.revokeObjectURL(file.preview.url);
         }
-        setSelectedImage(null);
-        setImagePreviewUrl(null);
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    const removeDocument = () => {
-        if (documentPreview) {
-            URL.revokeObjectURL(documentPreview.url);
-        }
-        setDocumentFile(null);
-        setDocumentPreview(null);
-    };
+    const toggleSearchMode = () => setSearchMode(!searchMode);
 
-    const toggleSearchMode = () => {
-        setSearchMode(!searchMode);
-    };
+    const canSend = (inputValue.trim() || selectedFiles.length > 0) && !isLoading;
 
-    const canSend = (inputValue.trim() || selectedImage || documentFile) && !isLoading;
-
-    // Determine placeholder text
     const getPlaceholder = () => {
         if (isLoading) return "AI đang trả lời...";
-        if (documentFile) return "Thêm mô tả cho file...";
-        if (selectedImage) return "Thêm mô tả cho ảnh...";
+        if (selectedFiles.some(f => f.type === 'pdf' || f.type === 'excel')) return "Thêm mô tả cho file...";
+        if (selectedFiles.some(f => f.type === 'image')) return "Thêm mô tả cho ảnh...";
         if (searchMode) return "Tìm kiếm thông tin trên web...";
         return "Nhắn tin với Architect AI... (Enter gửi, Shift+Enter xuống dòng)";
     };
 
+    // Drag & drop handlers
+    const handleDragOver = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isDragging) setIsDragging(true);
+    }, [isDragging]);
+
+    const handleDragLeave = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    }, []);
+
+    const handleDrop = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const files = e.dataTransfer.files;
+        if (files) handleFiles(files);
+    }, [handleFiles]);
+
+    const getFileIcon = (type) => {
+        switch (type) {
+            case 'image': return <ImageIcon size={20} className="text-purple-400" />;
+            case 'pdf': return <FileText size={20} className="text-red-400" />;
+            case 'excel': return <FileSpreadsheet size={20} className="text-green-400" />;
+            default: return <File size={20} className="text-gray-400" />;
+        }
+    };
+
     return (
-        <div className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-[#0e0e0e] via-[#0e0e0e]/95 to-transparent z-30">
+        <div
+            className={`absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-[#0e0e0e] via-[#0e0e0e]/95 to-transparent z-30 transition-all duration-300 ${isDragging ? 'bg-blue-900/20' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+        >
             <div className="max-w-4xl mx-auto space-y-3">
 
-                {/* Image preview */}
+                {/* Drag overlay */}
                 <AnimatePresence>
-                    {imagePreviewUrl && (
+                    {isDragging && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 8 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 8 }}
-                            className="relative w-36 h-36 rounded-[24px] overflow-hidden border-2 border-blue-500/50 shadow-[0_0_24px_rgba(59,130,246,0.25)]"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="absolute inset-0 z-50 flex items-center justify-center bg-blue-950/40 backdrop-blur-sm border-2 border-dashed border-blue-500/50 rounded-3xl pointer-events-none"
                         >
-                            <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-cover" />
-                            <button
-                                onClick={removeImage}
-                                className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-red-500 text-white rounded-xl transition-all duration-200 backdrop-blur-sm"
-                            >
-                                <X size={14} />
-                            </button>
+                            <div className="flex flex-col items-center gap-3 text-blue-300">
+                                <Upload size={48} className="animate-bounce" />
+                                <p className="text-lg font-bold uppercase tracking-wider">Drop files here</p>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* Document preview */}
-                <AnimatePresence>
-                    {documentPreview && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 8 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 8 }}
-                            className="relative flex items-center gap-3 p-4 rounded-[20px] overflow-hidden border-2 border-blue-500/50 shadow-[0_0_24px_rgba(59,130,246,0.25)] bg-white/[0.03]"
-                        >
-                            <div className={`p-3 rounded-xl ${
-                                documentPreview.type === "pdf"
-                                    ? "bg-red-500/20 text-red-400"
-                                    : "bg-green-500/20 text-green-400"
-                            }`}>
-                                {documentPreview.type === "pdf" ? (
-                                    <FileText size={24} />
-                                ) : (
-                                    <FileSpreadsheet size={24} />
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-white truncate">
-                                    {documentPreview.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    {documentPreview.size} MB
-                                </p>
-                            </div>
-                            <button
-                                onClick={removeDocument}
-                                className="p-2 bg-black/40 hover:bg-red-500 text-white rounded-xl transition-all duration-200"
-                            >
-                                <X size={16} />
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* File previews grid */}
+                {selectedFiles.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        <AnimatePresence>
+                            {selectedFiles.map((item, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                    className="relative group"
+                                >
+                                    {item.type === 'image' ? (
+                                        <div className="relative w-full aspect-square rounded-2xl overflow-hidden border-2 border-blue-500/50 shadow-[0_0_24px_rgba(59,130,246,0.25)]">
+                                            <img src={item.preview} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <div className="relative flex flex-col items-center p-4 rounded-2xl border-2 border-blue-500/50 shadow-[0_0_24px_rgba(59,130,246,0.25)] bg-white/[0.03] backdrop-blur-sm">
+                                            {getFileIcon(item.type)}
+                                            <p className="text-[10px] font-bold text-gray-300 mt-2 text-center truncate w-full" title={item.file.name}>
+                                                {item.file.name}
+                                            </p>
+                                            <p className="text-[9px] text-gray-500">{item.preview.size} MB</p>
+                                        </div>
+                                    )}
+
+                                    {/* Remove button */}
+                                    <motion.button
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={() => removeFile(idx)}
+                                        className="absolute -top-2 -right-2 p-1.5 bg-red-500 hover:bg-red-400 text-white rounded-full shadow-lg z-10"
+                                        aria-label={`Remove file ${idx + 1}`}
+                                    >
+                                        <X size={12} />
+                                    </motion.button>
+
+                                    {/* File index badge */}
+                                    <div className="absolute -top-2 -left-2 w-5 h-5 bg-blue-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-[#0e0e0e]">
+                                        {idx + 1}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                )}
 
                 {/* Input bar */}
-                <div className="flex items-end gap-3 bg-white/[0.03] border border-white/10 px-5 py-3.5 rounded-[28px] shadow-2xl backdrop-blur-3xl focus-within:border-blue-500/40 transition-all duration-400">
+                <div className="flex items-end gap-3 bg-white/[0.03] border border-white/10 px-5 py-3.5 rounded-2xl shadow-lg backdrop-blur-sm focus-within:border-blue-500/40 focus-within:bg-white/[0.05] transition-all duration-300">
                     <input
                         type="file"
                         ref={fileInputRef}
-                        onChange={handleFileChange}
+                        onChange={handleFileSelect}
                         className="hidden"
                         accept="image/*,.pdf,.xlsx,.xls,.csv"
+                        multiple
+                        aria-label="Attach files"
                     />
 
                     {/* Attach button */}
@@ -194,10 +244,11 @@ export default function InputBar({ onSend, isLoading }) {
                         whileTap={{ scale: 0.92 }}
                         onClick={() => fileInputRef.current?.click()}
                         className={`p-2 rounded-xl transition-all duration-200 flex-shrink-0 mb-0.5 ${
-                            selectedImage || documentFile
+                            selectedFiles.length > 0
                                 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
                                 : "text-gray-500 hover:text-white bg-white/5 hover:bg-white/10"
                         }`}
+                        title="Attach files (images, PDF, Excel)"
                     >
                         <Paperclip size={18} />
                     </motion.button>
@@ -213,6 +264,7 @@ export default function InputBar({ onSend, isLoading }) {
                                 : "text-gray-500 hover:text-white bg-white/5 hover:bg-white/10"
                         }`}
                         title="Web Search Mode"
+                        aria-pressed={searchMode}
                     >
                         <Globe size={18} />
                     </motion.button>
@@ -228,13 +280,16 @@ export default function InputBar({ onSend, isLoading }) {
                         disabled={isLoading}
                         className="flex-1 bg-transparent border-none outline-none text-[14px] font-medium placeholder:text-gray-600 px-2 text-white resize-none overflow-hidden leading-relaxed disabled:opacity-50"
                         style={{ minHeight: "24px", maxHeight: "160px" }}
+                        aria-label="Message input"
                     />
 
-                    {/* Mic (decorative) */}
-                    {!inputValue && !selectedImage && !documentFile && !isLoading && (
+                    {/* Mic (decorative, can be connected to speech-to-text later) */}
+                    {!inputValue && selectedFiles.length === 0 && !isLoading && (
                         <motion.button
                             whileHover={{ scale: 1.08 }}
                             className="p-2 text-gray-500 hover:text-blue-400 transition-colors bg-white/5 rounded-xl flex-shrink-0 mb-0.5"
+                            title="Voice input (coming soon)"
+                            aria-label="Voice input"
                         >
                             <Mic size={18} />
                         </motion.button>
@@ -251,6 +306,7 @@ export default function InputBar({ onSend, isLoading }) {
                                 ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/30 cursor-pointer"
                                 : "bg-white/5 text-gray-700 cursor-not-allowed"
                         }`}
+                        aria-label="Send message"
                     >
                         {isLoading ? (
                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -263,14 +319,24 @@ export default function InputBar({ onSend, isLoading }) {
                     </motion.button>
                 </div>
 
+                {/* Footer */}
                 <div className="flex items-center justify-between px-2">
                     <p className="text-[9px] text-gray-700 font-bold uppercase tracking-[0.25em] opacity-40">
                         Architect AI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng.
                     </p>
                     {searchMode && (
-                        <p className="text-[9px] text-green-400 font-bold uppercase tracking-[0.15em] flex items-center gap-1">
+                        <motion.p
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-[9px] text-green-400 font-bold uppercase tracking-[0.15em] flex items-center gap-1"
+                        >
                             <Globe size={10} />
                             Web Search Active
+                        </motion.p>
+                    )}
+                    {selectedFiles.length > 0 && (
+                        <p className="text-[9px] text-blue-400 font-bold uppercase tracking-[0.15em]">
+                            {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} attached
                         </p>
                     )}
                 </div>

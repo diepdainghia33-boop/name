@@ -1,98 +1,164 @@
-import React, { useState, useEffect } from "react";
-import { MessageSquare, Smile, Gauge } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MessageSquare, Smile, Gauge, Zap, Clock } from "lucide-react";
 import axios from "axios";
+import { motion } from "framer-motion";
 
 export default function Stats() {
-    const [totalMsgs, setTotalMsgs] = useState("...");
-    const [responseTime, setResponseTime] = useState("1.2s");
+    const [stats, setStats] = useState({
+        totalMessages: 0,
+        satisfaction: 4.8,
+        responseTime: 1.2,
+        tokensUsed: 0,
+        trend: 12
+    });
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await axios.get("http://127.0.0.1:8001/api/stats");
-                setTotalMsgs(response.data.total_messages?.toLocaleString() || "0");
-                // Mock response time based on actual latency or something
-                setResponseTime((Math.random() * (1.5 - 0.8) + 0.8).toFixed(1) + "s");
+                const [mainRes, chatbotRes] = await Promise.all([
+                    axios.get("http://127.0.0.1:8001/api/stats"),
+                    axios.get("http://127.0.0.1:8001/analytics/chatbot")
+                ]);
+
+                setStats(prev => {
+                    const newStats = { ...prev };
+
+                    // Safely extract total_messages
+                    if (mainRes.data && mainRes.data.total_messages != null && !isNaN(mainRes.data.total_messages)) {
+                        newStats.totalMessages = Number(mainRes.data.total_messages);
+                    }
+
+                    // Safely extract chatbot stats
+                    if (chatbotRes.data?.stats) {
+                        const cs = chatbotRes.data.stats;
+                        if (cs.tokens_used != null && !isNaN(cs.tokens_used)) {
+                            newStats.tokensUsed = Number(cs.tokens_used);
+                        }
+                        if (cs.avg_response_time != null && !isNaN(cs.avg_response_time)) {
+                            newStats.responseTime = Number(cs.avg_response_time);
+                        }
+                    }
+
+                    return newStats;
+                });
             } catch (error) {
-                console.error("Error fetching analytics stats:", error);
-                setTotalMsgs("0");
+                console.error("Error fetching stats:", error);
             }
         };
         fetchStats();
-        const interval = setInterval(fetchStats, 30000); // Update every 30s
+        const interval = setInterval(fetchStats, 30000);
         return () => clearInterval(interval);
     }, []);
 
-    const data = [
+    const formatNumber = (num) => {
+        if (num === null || num === undefined || isNaN(num)) return "0";
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+        if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+        return Math.round(num).toString();
+    };
+
+    // Ensure all values are numbers
+    const safeStats = {
+        totalMessages: Number(stats.totalMessages) || 0,
+        satisfaction: Number(stats.satisfaction) || 4.8,
+        responseTime: Number(stats.responseTime) || 1.2,
+        tokensUsed: Number(stats.tokensUsed) || 0,
+        trend: Number(stats.trend) || 0
+    };
+
+    const statCards = [
         {
-            title: "TOTAL CONVERSATIONS",
-            value: totalMsgs,
-            sub: "+12% from last month",
-            icon: <MessageSquare size={18} />,
+            title: "Total Conversations",
+            value: formatNumber(safeStats.totalMessages),
+            icon: <MessageSquare size={20} />,
             color: "text-blue-400",
             bg: "bg-blue-500/10",
+            borderColor: "border-blue-500/20",
+            trend: safeStats.trend > 0 ? `+${safeStats.trend}%` : undefined,
+            trendUp: true
         },
         {
-            title: "USER SATISFACTION",
-            value: "4.8/5.0",
-            sub: "Stable",
-            icon: <Smile size={18} />,
-            color: "text-pink-400",
-            bg: "bg-pink-500/10",
-            progress: 96,
+            title: "User Satisfaction",
+            value: safeStats.satisfaction.toFixed(1) + "/5.0",
+            icon: <Smile size={20} />,
+            color: "text-emerald-400",
+            bg: "bg-emerald-500/10",
+            borderColor: "border-emerald-500/20",
+            trend: "Stable",
+            trendUp: null
         },
         {
-            title: "AVG. RESPONSE TIME",
-            value: responseTime,
-            sub: "Real-time sync",
-            icon: <Gauge size={18} />,
-            color: "text-blue-400",
-            bg: "bg-blue-500/10",
+            title: "Avg Response Time",
+            value: safeStats.responseTime.toFixed(1) + "s",
+            icon: <Clock size={20} />,
+            color: "text-cyan-400",
+            bg: "bg-cyan-500/10",
+            borderColor: "border-cyan-500/20",
+            trend: "-15%",
+            trendUp: true
         },
+        {
+            title: "AI Tokens Used",
+            value: formatNumber(safeStats.tokensUsed),
+            icon: <Zap size={20} />,
+            color: "text-amber-400",
+            bg: "bg-amber-500/10",
+            borderColor: "border-amber-500/20",
+            trend: "+8%",
+            trendUp: true
+        }
     ];
 
     return (
-        <div className="grid grid-cols-12 gap-6 mb-8">
-            {data.map((item, i) => (
-                <div
-                    key={i}
-                    className="col-span-12 md:col-span-4 bg-[#131313] p-6 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all duration-500"
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {statCards.map((card, index) => (
+                <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                    className={`relative bg-gradient-to-br from-white/5 to-white/[0.02] p-6 rounded-2xl border ${card.borderColor} hover:border-opacity-50 transition-all duration-300 overflow-hidden group`}
                 >
-                    {/* ICON */}
-                    <div className={`w-10 h-10 flex items-center justify-center rounded-xl ${item.bg} mb-4`}>
-                        <div className={item.color}>
-                            {item.icon}
-                        </div>
+                    {/* Glow effect on hover */}
+                    <div className={`absolute inset-0 ${card.bg} opacity-0 group-hover:opacity-20 transition-opacity duration-300`} />
+
+                    {/* Icon */}
+                    <div className={`w-12 h-12 rounded-xl ${card.bg} flex items-center justify-center mb-4 relative z-10`}>
+                        <div className={card.color}>{card.icon}</div>
                     </div>
 
-                    {/* TITLE */}
-                    <p className="text-xs text-gray-400 tracking-wide font-black uppercase">
-                        {item.title}
+                    {/* Title */}
+                    <p className="text-xs font-['Space_Grotesk'] uppercase tracking-[0.2em] text-[#adaaaa] mb-2">
+                        {card.title}
                     </p>
 
-                    {/* VALUE */}
-                    <h3 className="text-4xl font-black mt-1 tracking-tighter text-white">
-                        {item.value}
+                    {/* Value */}
+                    <h3 className="text-3xl font-black tracking-tighter text-white mb-1">
+                        {card.value}
                     </h3>
 
-                    {/* PROGRESS (chỉ card giữa) */}
-                    {item.progress && (
-                        <div className="mt-3 h-1 bg-[#1f1f1f] rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-pink-500 to-purple-500 rounded-full"
-                                style={{ width: `${item.progress}%` }}
-                            />
+                    {/* Trend */}
+                    {card.trend && (
+                        <div className="flex items-center gap-2 mt-2">
+                            <Clock size={12} className={card.trendUp ? "text-green-400" : "text-red-400"} />
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${card.trendUp ? "text-green-400" : "text-red-400"}`}>
+                                {card.trend} this week
+                            </span>
                         </div>
                     )}
 
-                    {/* SUB TEXT */}
-                    {item.sub && (
-                        <p className={`text-[10px] font-bold mt-2 uppercase tracking-widest ${item.sub.includes("-") ? "text-red-400" : "text-blue-400"
-                            }`}>
-                            {item.sub}
-                        </p>
-                    )}
-                </div>
+                    {/* Subtle animated line bottom */}
+                    <motion.div
+                        className="absolute bottom-0 left-0 right-0 h-0.5"
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
+                        transition={{ delay: index * 0.1 + 0.3, duration: 0.8 }}
+                        style={{
+                            background: `linear-gradient(90deg, transparent, ${card.color.match(/#[0-9a-fA-F]+/)?.[0] || '#ffffff'}, transparent)`
+                        }}
+                    />
+                </motion.div>
             ))}
         </div>
     );
