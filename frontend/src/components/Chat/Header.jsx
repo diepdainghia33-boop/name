@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Search, Bell, Menu, X, ChevronDown, MessageSquare } from "lucide-react";
+import { Search, Bell, Menu, ChevronDown, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import NotificationDropdown from "../Dashboard/NotificationDropdown";
 
 export default function Header({ searchQuery, setSearchQuery, user, onMenuToggle, onConversationsToggle, showMobileSearch }) {
     const [showNotifications, setShowNotifications] = useState(false);
@@ -67,23 +68,10 @@ export default function Header({ searchQuery, setSearchQuery, user, onMenuToggle
                     </motion.button>
 
                     {/* Notifications dropdown */}
-                    <AnimatePresence>
-                        {showNotifications && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                className="absolute right-0 top-full mt-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50"
-                            >
-                                <div className="p-3 border-b border-white/5">
-                                    <h3 className="text-sm font-black uppercase tracking-wider text-white">Notifications</h3>
-                                </div>
-                                <div className="p-4 text-center text-gray-400 text-sm">
-                                    No new notifications
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    <NotificationDropdown
+                        isOpen={showNotifications}
+                        onClose={() => setShowNotifications(false)}
+                    />
                 </div>
 
                 {/* User Profile */}

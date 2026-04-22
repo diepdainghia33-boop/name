@@ -4,6 +4,8 @@ import SidebarLeft from "../components/Dashboard/SidebarLeft";
 import Header from "../components/Chat/Header";
 import ChatGPT from "../components/Chat/ChatGPT";
 import InputBar from "../components/Chat/InputBar";
+import { settingsApi } from "../api/settings.api";
+import { chatApi } from "../api/chat.api";
 import RightPanel from "../components/Chat/RightPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
@@ -32,7 +34,20 @@ export default function Chat() {
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
     const [mobileConversationsOpen, setMobileConversationsOpen] = useState(false);
     const messagesEndRef = useRef(null);
-    const chatContainerRef = useRef(null);
+
+    const [settings, setSettings] = useState({
+        toggles: {
+            sendOnEnter: true,
+            autoScroll: true,
+            showTimestamps: true,
+            desktopNotifications: true
+        },
+        ui_prefs: {
+            model: 'gpt-4',
+            contextLength: 4000,
+            inferencePrecision: 80
+        }
+    });
 
     // Debounce search to avoid excessive re-renders
     const debouncedSearch = useDebounce(searchQuery, 300);
@@ -73,12 +88,29 @@ export default function Chat() {
 
     useEffect(() => {
         fetchConversations();
+        fetchSettings();
     }, [fetchConversations]);
+
+    const fetchSettings = async () => {
+        try {
+            const response = await settingsApi.getPreferences();
+            if (response.data.preferences) {
+                setSettings(prev => ({
+                    ...prev,
+                    toggles: { ...prev.toggles, ...response.data.preferences.toggles },
+                    ui_prefs: { ...prev.ui_prefs, ...response.data.preferences.ui_prefs }
+                }));
+            }
+        } catch (error) {
+            console.error("Failed to fetch settings:", error);
+        }
+    };
 
     // ── Welcome message ──────────────────────────────────────────────────────────
     useEffect(() => {
+        // Only show welcome if no messages and no active conversation
         if (messages.length === 0 && !isLoading && !activeConversationId) {
-            const t = setTimeout(() => {
+            const timer = setTimeout(() => {
                 setMessages([{
                     id: "welcome",
                     content: `Chào ${user?.name || "bạn"}! Tôi là **Architect AI** — trợ lý thông minh của bạn.\n\nTôi có thể giúp bạn:\n- 💡 Tư vấn kiến trúc phần mềm & hệ thống\n- 📊 Phân tích hóa đơn và chi phí\n- 💻 Viết code, debug, code review\n- ❓ Trả lời mọi câu hỏi kỹ thuật\n\nBạn muốn bắt đầu với điều gì?`,
@@ -87,14 +119,16 @@ export default function Chat() {
                     sentiment: { ota_class: "P1", confidence: 95 }
                 }]);
             }, 300);
-            return () => clearTimeout(t);
+            return () => clearTimeout(timer);
         }
     }, [messages.length, isLoading, activeConversationId, user?.name]);
 
     // ── Auto scroll on new messages ──────────────────────────────────────────────
     useEffect(() => {
-        scrollToBottom();
-    }, [filteredMessages, isLoading, scrollToBottom]);
+        if (settings.toggles.autoScroll) {
+            scrollToBottom();
+        }
+    }, [filteredMessages, isLoading, scrollToBottom, settings.toggles.autoScroll]);
 
     // ── Select conversation ───────────────────────────────────────────────────────
     const handleSelectConversation = useCallback(async (id) => {
@@ -176,6 +210,9 @@ export default function Chat() {
         if (image) formData.append("image", image);
         if (document) formData.append("file", document);
         if (searchMode) formData.append("search_mode", "1");
+        if (settings.ui_prefs.model) formData.append("model", settings.ui_prefs.model);
+        if (settings.ui_prefs.contextLength) formData.append("context_length", settings.ui_prefs.contextLength);
+        if (settings.ui_prefs.inferencePrecision) formData.append("precision", settings.ui_prefs.inferencePrecision);
 
         const msgType = document ? "document" : (image ? "image" : "text");
 
@@ -214,6 +251,16 @@ export default function Chat() {
                 return result;
             });
 
+            // Trigger Desktop Notification
+            if (bot_message && settings.toggles.desktopNotifications && document.hidden) {
+                if ("Notification" in window && Notification.permission === "granted") {
+                    new Notification("New message from Architect AI", {
+                        body: bot_message.content,
+                        icon: "/logo.svg" // or another icon path
+                    });
+                }
+            }
+
             if (!activeConversationId && conversation_id) {
                 setActiveConversationId(conversation_id);
                 await fetchConversations();
@@ -238,7 +285,16 @@ export default function Chat() {
         } finally {
             setIsLoading(false);
         }
-    }, [activeConversationId, fetchConversations]);
+    }, [activeConversationId, fetchConversations, settings.toggles.desktopNotifications, settings.ui_prefs.contextLength, settings.ui_prefs.model, settings.ui_prefs.inferencePrecision]);
+
+    const handleFeedback = useCallback(async (messageId, feedback) => {
+        try {
+            await chatApi.submitFeedback(messageId, feedback);
+            setMessages(prev => prev.map(m => m.id === messageId ? { ...m, feedback } : m));
+        } catch (error) {
+            console.error("Failed to submit feedback:", error);
+        }
+    }, []);
 
     // ── Keyboard shortcuts ────────────────────────────────────────────────────────
     useEffect(() => {
@@ -286,7 +342,7 @@ export default function Chat() {
             </AnimatePresence>
 
             {/* Sidebar */}
-            <div className={`sidebar-left fixed lg:static inset-y-0 left-0 z-50 transform ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300`}>
+            <div className={`sidebar-left fixed lg:static inset-y-0 left-0 z-50 transform ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 w-72`}>
                 <SidebarLeft
                     user={user}
                     onClose={() => setMobileSidebarOpen(false)}
@@ -294,7 +350,7 @@ export default function Chat() {
             </div>
 
             {/* Main content */}
-            <main className="flex-1 ml-0 lg:ml-72 flex flex-col relative text-white bg-[#0e0e0e]">
+            <main className="flex-1 ml-0 lg:ml-0 flex flex-col relative text-white bg-[#0e0e0e]">
                 <Header
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
@@ -383,8 +439,15 @@ export default function Chat() {
                         isLoading={isLoading}
                         messagesEndRef={messagesEndRef}
                         user={user}
+                        showTimestamps={settings.toggles.showTimestamps}
+                        autoScroll={settings.toggles.autoScroll}
+                        onFeedback={handleFeedback}
                     />
-                    <InputBar onSend={handleSendMessage} isLoading={isLoading} />
+                    <InputBar 
+                        onSend={handleSendMessage} 
+                        isLoading={isLoading} 
+                        sendOnEnter={settings.toggles.sendOnEnter}
+                    />
                 </div>
             </main>
 

@@ -1,5 +1,4 @@
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api";
 
@@ -25,7 +24,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (res) => res,
     (err) => {
-        if (err.response?.status === 401) {
+        const requestUrl = err.config?.url || "";
+        const isAuthEndpoint =
+            requestUrl.includes("/login") ||
+            requestUrl.includes("/register");
+
+        if (err.response?.status === 401 && !isAuthEndpoint) {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
             // Use window.location instead of navigate since we don't have access to useNavigate in interceptor

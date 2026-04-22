@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/conversations/{id}/messages', 'App\Http\Controllers\ChatController@getMessages');
     Route::delete('/conversations/{id}', 'App\Http\Controllers\ChatController@deleteConversation');
     Route::post('/messages/send', 'App\Http\Controllers\ChatController@sendMessage');
+    Route::post('/messages/{id}/feedback', 'App\Http\Controllers\ChatController@submitFeedback');
 
     // Settings Routes
     Route::get('/settings', 'App\Http\Controllers\SettingsController@index');
@@ -36,4 +37,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/settings/export-data', 'App\Http\Controllers\SettingsController@exportData');
     Route::post('/settings/delete-account', 'App\Http\Controllers\SettingsController@deleteAccount');
     Route::post('/settings/clear-cache', 'App\Http\Controllers\SettingsController@clearCache');
+
+    // API Key Routes
+    Route::get('/api-keys', 'App\Http\Controllers\ApiKeyController@index');
+    Route::post('/api-keys', 'App\Http\Controllers\ApiKeyController@store');
+    Route::delete('/api-keys/{id}', 'App\Http\Controllers\ApiKeyController@destroy');
+
+    // Analytics Routes
+    Route::get('/analytics', 'App\Http\Controllers\AnalyticsController@getTrends');
+
+    // Notification Routes
+    Route::get('/notifications', 'App\Http\Controllers\NotificationController@index');
+    Route::post('/notifications/{id}/read', 'App\Http\Controllers\NotificationController@markAsRead');
 });

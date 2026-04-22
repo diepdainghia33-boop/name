@@ -6,7 +6,10 @@ from typing import Optional, List
 from pydantic import BaseModel
 from PIL import Image as PILImage
 import pytesseract
-from ota_analyzer import ota_engine
+try:
+    from .ota_analyzer import ota_engine
+except ImportError:
+    from ota_analyzer import ota_engine
 from groq import Groq
 from anthropic import Anthropic
 from dotenv import load_dotenv
@@ -24,7 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
 
 # Claude client - for multi-modal (PDF/Excel) and web search
@@ -69,6 +72,28 @@ def get_cpu_speed():
     except:
         return "2.40 GHz"
 
+def get_cpu_load():
+    try:
+        cmd = "wmic cpu get loadpercentage /value"
+        output = subprocess.check_output(cmd, shell=True).decode(errors="ignore")
+        values = re.findall(r"LoadPercentage=(\d+)", output)
+        if values:
+            loads = [int(v) for v in values]
+            return round(sum(loads) / len(loads), 1)
+    except:
+        pass
+
+    try:
+        cmd = "wmic cpu get loadpercentage"
+        output = subprocess.check_output(cmd, shell=True).decode(errors="ignore")
+        values = [int(v) for v in re.findall(r"\b\d+\b", output)]
+        if values:
+            return round(sum(values) / len(values), 1)
+    except:
+        pass
+
+    return None
+
 @app.get("/api/stats")
 def get_stats():
     total_msgs = 0
@@ -94,6 +119,7 @@ def get_stats():
         pass
     return {
         "cpu_speed": get_cpu_speed(),
+        "cpu_load": get_cpu_load(),
         "status": "Stable",
         "total_messages": total_msgs,
         "total_tokens": total_tokens,
@@ -233,10 +259,6 @@ def get_analytics(request: Request):
                 d = today - timedelta(days=i)
                 days.append(d.strftime("%d/%m"))
             data = [0] * 30
-        else:  # 30
-            days = ["1/1", "1/2", "1/3", "1/4", "1/5", "1/6", "1/7"]
-            data = [0, 0, 0, 0, 0, 0, 0]
-
     return {"days": days, "data": data, "intents": intents}
 
 

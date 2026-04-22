@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { loginApi } from "../api/auth.api";
 import { useNavigate, Link } from "react-router-dom";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function AuthPage() {
     const [email, setEmail] = useState("");
@@ -21,28 +22,29 @@ export default function AuthPage() {
                 password
             });
 
-            // lưu token + user
             localStorage.setItem("token", res.data.token);
             localStorage.setItem("user", JSON.stringify(res.data.user));
+            sessionStorage.setItem(
+                "dashboard_welcome",
+                JSON.stringify({
+                    name: res.data.user?.name || email,
+                    message: "Your command center is live. Everything is synced for this session."
+                })
+            );
 
-            // chuyển trang
-            navigate("/dashboard");
-
+            navigate("/dashboard", { replace: true });
         } catch (err) {
-            setError("Sai email hoặc mật khẩu");
+            setError(getApiErrorMessage(err, "Sai email hoặc mật khẩu"));
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     return (
         <div className="relative bg-[#0e0e0e] text-white min-h-screen flex flex-col overflow-hidden">
-
-            {/* BACKGROUND */}
             <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-500/10 blur-[180px] rounded-full"></div>
             <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-500/10 blur-[180px] rounded-full"></div>
 
-            {/* HEADER */}
             <header className="fixed top-0 w-full z-50 flex justify-between items-center px-10 h-20 bg-black/20 backdrop-blur-xl border-b border-white/5">
                 <Link to="/" className="text-xl font-black tracking-tighter text-white uppercase italic">
                     Architect<span className="text-blue-500">.AI</span>
@@ -54,14 +56,12 @@ export default function AuthPage() {
                 </div>
             </header>
 
-            {/* MAIN */}
             <main className="flex-grow flex items-center justify-center pt-20">
                 <div className="w-full max-w-[1440px] grid md:grid-cols-2 min-h-[820px] rounded-3xl overflow-hidden border border-white/5 shadow-[0_0_60px_rgba(0,0,0,0.5)]">
-
-                    {/* LEFT */}
                     <div className="hidden md:flex relative items-center justify-center p-12 bg-[#111]">
                         <img
                             src="https://images.unsplash.com/photo-1506744038136-46273834b3fb"
+                            alt="Abstract architectural landscape"
                             className="absolute inset-0 w-full h-full object-cover opacity-30 grayscale"
                         />
                         <div className="relative z-10 max-w-lg">
@@ -71,11 +71,8 @@ export default function AuthPage() {
                         </div>
                     </div>
 
-                    {/* RIGHT */}
                     <div className="flex flex-col justify-center items-center px-6 md:px-20 py-12 bg-black/40 backdrop-blur-2xl">
-
                         <div className="w-full max-w-md">
-
                             <div className="mb-10">
                                 <h1 className="text-3xl font-bold mb-2">
                                     Welcome Back
@@ -85,10 +82,7 @@ export default function AuthPage() {
                                 </p>
                             </div>
 
-                            {/* FORM */}
                             <form className="space-y-6" onSubmit={handleLogin}>
-
-                                {/* EMAIL */}
                                 <div>
                                     <label className="text-xs text-gray-400 uppercase">
                                         Email
@@ -102,7 +96,6 @@ export default function AuthPage() {
                                     />
                                 </div>
 
-                                {/* PASSWORD */}
                                 <div>
                                     <label className="text-xs text-gray-400 uppercase">
                                         Password
@@ -111,7 +104,7 @@ export default function AuthPage() {
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        placeholder="••••••••"
+                                        placeholder="password"
                                         className="w-full h-12 mt-2 px-4 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                                     />
                                     <div className="flex justify-end mt-2">
@@ -121,14 +114,12 @@ export default function AuthPage() {
                                     </div>
                                 </div>
 
-                                {/* ERROR */}
                                 {error && (
                                     <div className="text-red-400 text-sm">
                                         {error}
                                     </div>
                                 )}
 
-                                {/* BUTTON */}
                                 <button
                                     type="submit"
                                     disabled={loading}
@@ -138,7 +129,6 @@ export default function AuthPage() {
                                 </button>
                             </form>
 
-                            {/* FOOT */}
                             <p className="text-center mt-10 text-sm text-gray-400">
                                 New here?{" "}
                                 <Link to="/register" className="text-blue-400 hover:underline">

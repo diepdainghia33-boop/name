@@ -21,7 +21,7 @@ export default function Metrics({ data }) {
                 icon={<Shield size={24} />}
                 label="ACTIVE STATUS"
                 title="System Health"
-                value={`${data.health || 0}%`}
+                value={data.health === null || data.health === undefined ? "--" : `${data.health}%`}
                 color="from-emerald-500 to-green-400"
                 textColor="text-emerald-400"
             />

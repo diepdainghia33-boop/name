@@ -11,12 +11,18 @@ class Message extends Model
 
     protected $fillable = [
         'conversation_id', 'content', 'role', 'type',
-        'image_path', 'file_path', 'file_type', 'search_mode', 'tokens'
+        'image_path', 'file_path', 'file_type', 'search_mode', 'tokens', 'feedback', 'response_time_ms'
     ];
     protected $touches = ['conversation'];
     protected $attributes = [
         'tokens' => 0,
         'search_mode' => false,
+    ];
+    protected $casts = [
+        'search_mode' => 'boolean',
+        'tokens' => 'integer',
+        'feedback' => 'integer',
+        'response_time_ms' => 'integer',
     ];
 
     public function conversation()

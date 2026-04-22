@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import SidebarLeft from "../components/Dashboard/SidebarLeft";
 import SettingsHeader from "../components/Dashboard/SettingsHeader";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
+import { settingsApi } from "../api/settings.api";
+import { updateProfileApi, updatePasswordApi } from "../api/auth.api";
 import ApiKeyManager from "../components/Dashboard/ApiKeyManager";
 
 const springTransition = { type: "spring", stiffness: 400, damping: 30 };
@@ -14,56 +15,131 @@ export default function ArchitectSettings() {
         name: "",
         email: ""
     });
-    const [passwordData, setPasswordData] = useState({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
-    });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
 
     // UI State for controls
     const [toggles, setToggles] = useState({
         biometric: true,
-        apiAccess: false
+        apiAccess: false,
+        darkMode: true,
+        sendOnEnter: true,
+        autoScroll: true,
+        showTimestamps: true,
+        desktopNotifications: false,
+        emailNotifications: false
     });
+
     const [sliders, setSliders] = useState({
         creativity: 82,
         detail: 90,
-        speed: 95
+        speed: 95,
+        contextLength: 70
     });
+
+    const [preferences, setPreferences] = useState({
+        fontSize: 'medium',
+        language: 'vi',
+        model: 'gpt-4',
+        theme: 'dark'
+    });
+
     const [hoveredCard, setHoveredCard] = useState(null);
     const [editingField, setEditingField] = useState(null);
-     const [editingPassword, setEditingPassword] = useState(false);
-     const [tempFormData, setTempFormData] = useState(formData);
-     const [tempPasswordData, setTempPasswordData] = useState(passwordData);
-     const [showApiKeyManager, setShowApiKeyManager] = useState(false);
+    const [editingPassword, setEditingPassword] = useState(false);
+    const [tempFormData, setTempFormData] = useState(formData);
+    const [tempPasswordData, setTempPasswordData] = useState({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+    });
+    const [showApiKeyManager, setShowApiKeyManager] = useState(false);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
-            setFormData(prev => ({
-                ...prev,
-                name: parsedUser.name,
-                email: parsedUser.email
-            }));
-            setTempFormData({
-                name: parsedUser.name,
-                email: parsedUser.email
-            });
-        }
+        fetchSettings();
     }, []);
+
+    useEffect(() => {
+        if (preferences.fontSize) {
+            applyFontSize(preferences.fontSize);
+        }
+    }, [preferences.fontSize]);
+
+    const applyFontSize = (size) => {
+        const html = document.documentElement;
+        html.classList.remove('font-size-small', 'font-size-medium', 'font-size-large', 'font-size-xlarge');
+        html.classList.add(`font-size-${size}`);
+    };
+
+    const fetchSettings = async () => {
+        try {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                const parsedUser = JSON.parse(storedUser);
+                setUser(parsedUser);
+                setFormData({
+                    name: parsedUser.name,
+                    email: parsedUser.email
+                });
+                setTempFormData({
+                    name: parsedUser.name,
+                    email: parsedUser.email
+                });
+            }
+
+            const response = await settingsApi.getPreferences();
+            const prefs = response.data.preferences;
+
+            if (prefs) {
+                if (prefs.toggles) setToggles(prev => ({ ...prev, ...prefs.toggles }));
+                if (prefs.sliders) setSliders(prev => ({ ...prev, ...prefs.sliders }));
+                if (prefs.ui_prefs) setPreferences(prev => ({ ...prev, ...prefs.ui_prefs }));
+            }
+        } catch (error) {
+            console.error("Failed to fetch settings:", error);
+        }
+    };
+
+    const savePreferences = async (updatedToggles, updatedSliders, updatedUiPrefs) => {
+        try {
+            await settingsApi.updatePreferences({
+                toggles: updatedToggles || toggles,
+                sliders: updatedSliders || sliders,
+                ui_prefs: updatedUiPrefs || preferences
+            });
+        } catch (error) {
+            console.error("Failed to save preferences:", error);
+        }
+    };
 
     const handleEditClick = (field) => {
         setEditingField(field);
         setTempFormData({ ...formData });
     };
 
-    const handleSaveEdit = () => {
-        setFormData({ ...tempFormData });
-        setEditingField(null);
+    const handleSaveEdit = async () => {
+        setLoading(true);
+        try {
+            const response = await updateProfileApi(tempFormData);
+            const updatedUser = response.data.user;
+
+            setFormData({
+                name: updatedUser.name,
+                email: updatedUser.email
+            });
+            setUser(updatedUser);
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+            setEditingField(null);
+            setMessage({ type: "success", text: "Profile updated successfully." });
+            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        } catch (error) {
+            setMessage({
+                type: "error",
+                text: error.response?.data?.message || "Failed to update profile."
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleCancelEdit = () => {
@@ -94,19 +170,10 @@ export default function ArchitectSettings() {
             return;
         }
 
-        if (tempPasswordData.newPassword.length < 6) {
-            setMessage({ type: "error", text: "Password must be at least 6 characters." });
-            setLoading(false);
-            return;
-        }
-
         try {
-            const token = localStorage.getItem("token");
-            await axios.post("http://127.0.0.1:8000/api/update-password", {
+            await updatePasswordApi({
                 current_password: tempPasswordData.currentPassword,
                 new_password: tempPasswordData.newPassword
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
             });
 
             setMessage({ type: "success", text: "Password updated successfully." });
@@ -129,38 +196,73 @@ export default function ArchitectSettings() {
     };
 
     const handleToggle = (key) => {
-        setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+        const newValue = !toggles[key];
+        const updated = { ...toggles, [key]: newValue };
+        setToggles(updated);
+        savePreferences(updated, sliders, preferences);
+
+        // Request permission if enabling desktop notifications
+        if (key === 'desktopNotifications' && newValue) {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission !== "granted") {
+                        // Revert if permission denied
+                        const reverted = { ...toggles, [key]: false };
+                        setToggles(reverted);
+                        savePreferences(reverted, sliders, preferences);
+                        setMessage({ type: "error", text: "Notification permission denied." });
+                    }
+                });
+            } else {
+                setMessage({ type: "error", text: "Notifications not supported in this browser." });
+            }
+        }
     };
 
     const handleSliderChange = (key, value) => {
-        setSliders(prev => ({ ...prev, [key]: value }));
+        const updated = { ...sliders, [key]: value };
+        setSliders(updated);
+        savePreferences(toggles, updated, preferences);
     };
 
-    const handleProfileUpdate = async () => {
-        setLoading(true);
-        setMessage({ type: "", text: "" });
+    const handlePreferenceChange = (key, value) => {
+        const updated = { ...preferences, [key]: value };
+        setPreferences(updated);
+        savePreferences(toggles, sliders, updated);
+
+        if (key === 'fontSize') {
+            applyFontSize(value);
+        }
+    };
+
+    const handleExportData = async () => {
         try {
-            const token = localStorage.getItem("token");
-            const response = await axios.post("http://127.0.0.1:8000/api/update-profile", {
-                name: formData.name,
-                email: formData.email
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await settingsApi.exportData();
+            const jsonString = JSON.stringify(response.data, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
 
-            const updatedUser = response.data.user;
-            setUser(updatedUser);
-            localStorage.setItem("user", JSON.stringify(updatedUser));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", url);
+            downloadAnchorNode.setAttribute("download", `chatid_data_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            URL.revokeObjectURL(url);
 
-            setMessage({ type: "success", text: "Profile updated successfully." });
+            setMessage({ type: "success", text: "Data exported successfully." });
+        } catch (error) {
+            setMessage({ type: "error", text: "Failed to export data." });
+        }
+    };
+
+    const handleClearCache = async () => {
+        try {
+            await settingsApi.clearCache();
+            setMessage({ type: "success", text: "System cache cleared successfully." });
             setTimeout(() => setMessage({ type: "", text: "" }), 3000);
         } catch (error) {
-            setMessage({
-                type: "error",
-                text: error.response?.data?.message || "Update failed."
-            });
-        } finally {
-            setLoading(false);
+            setMessage({ type: "error", text: "Failed to clear cache." });
         }
     };
 
@@ -627,6 +729,333 @@ export default function ArchitectSettings() {
                                     </motion.div>
                                 </div>
                             </section>
+                            {/* Notifications Section */}
+                            <section className="space-y-4">
+                                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                                    <MaterialIcon name="notifications" className="text-[#fbbf24]" />
+                                    <h2 className="font-['Space_Grotesk'] text-sm uppercase tracking-[0.2em] font-semibold text-[#fbbf24]">
+                                        Notification Preferences
+                                    </h2>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Desktop Notifications */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-lg bg-[#fbbf24]/20 flex items-center justify-center">
+                                                <MaterialIcon name="desktop_windows" className="text-[#fbbf24]" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base">Desktop Notifications</p>
+                                                <p className="text-xs text-[#adaaaa]">Show browser alerts</p>
+                                            </div>
+                                        </div>
+                                        <div
+                                            className={`w-12 h-6 rounded-full relative p-1 cursor-pointer transition-colors ${toggles.desktopNotifications ? 'bg-[#fbbf24]/30' : 'bg-white/10'}`}
+                                            onClick={() => handleToggle('desktopNotifications')}
+                                        >
+                                            <motion.div
+                                                animate={{ x: toggles.desktopNotifications ? 20 : 0 }}
+                                                className="w-4 h-4 bg-[#fbbf24] rounded-full absolute top-1"
+                                            />
+                                        </div>
+                                    </motion.div>
+
+                                    {/* Email Alerts */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                                <MaterialIcon name="email" className="text-blue-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base">Email Alerts</p>
+                                                <p className="text-xs text-[#adaaaa]">Important updates via email</p>
+                                            </div>
+                                        </div>
+                                        <div
+                                            className={`w-12 h-6 rounded-full relative p-1 cursor-pointer transition-colors ${toggles.emailNotifications ? 'bg-blue-500/30' : 'bg-white/10'}`}
+                                            onClick={() => handleToggle('emailNotifications')}
+                                        >
+                                            <motion.div
+                                                animate={{ x: toggles.emailNotifications ? 20 : 0 }}
+                                                className="w-4 h-4 bg-blue-500 rounded-full absolute top-1"
+                                            />
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            </section>
+
+                            {/* Appearance Section */}
+                            <section className="space-y-4">
+                                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                                    <MaterialIcon name="palette" className="text-[#c084fc]" />
+                                    <h2 className="font-['Space_Grotesk'] text-sm uppercase tracking-[0.2em] font-semibold text-[#c084fc]">
+                                        Appearance
+                                    </h2>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Font Size */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5"
+                                    >
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="w-10 h-10 rounded-lg bg-[#c084fc]/20 flex items-center justify-center">
+                                                <MaterialIcon name="text_fields" className="text-[#c084fc]" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base">Font Size</p>
+                                                <p className="text-xs text-[#adaaaa]">Text appearance scale</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {['small', 'medium', 'large'].map(size => (
+                                                <button
+                                                    key={size}
+                                                    onClick={() => handlePreferenceChange('fontSize', size)}
+                                                    className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all ${preferences.fontSize === size
+                                                        ? 'bg-[#c084fc] text-white'
+                                                        : 'bg-white/5 text-[#adaaaa] hover:bg-white/10'
+                                                        }`}
+                                                >
+                                                    {size}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+
+                                    {/* Show Timestamps */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                                                <MaterialIcon name="schedule" className="text-cyan-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base">Show Timestamps</p>
+                                                <p className="text-xs text-[#adaaaa]">Display message times</p>
+                                            </div>
+                                        </div>
+                                        <div
+                                            className={`w-12 h-6 rounded-full relative p-1 cursor-pointer transition-colors ${toggles.showTimestamps ? 'bg-cyan-500/30' : 'bg-white/10'}`}
+                                            onClick={() => handleToggle('showTimestamps')}
+                                        >
+                                            <motion.div
+                                                animate={{ x: toggles.showTimestamps ? 20 : 0 }}
+                                                className="w-4 h-4 bg-cyan-500 rounded-full absolute top-1"
+                                            />
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            </section>
+
+                            {/* Chat Behavior Section */}
+                            <section className="space-y-4">
+                                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                                    <MaterialIcon name="chat" className="text-[#60a5fa]" />
+                                    <h2 className="font-['Space_Grotesk'] text-sm uppercase tracking-[0.2em] font-semibold text-[#60a5fa]">
+                                        Chat Behavior
+                                    </h2>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Send on Enter */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-lg bg-[#60a5fa]/20 flex items-center justify-center">
+                                                <MaterialIcon name="keyboard_return" className="text-[#60a5fa]" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base">Send on Enter</p>
+                                                <p className="text-xs text-[#adaaaa]">Press Enter to send messages</p>
+                                            </div>
+                                        </div>
+                                        <div
+                                            className={`w-12 h-6 rounded-full relative p-1 cursor-pointer transition-colors ${toggles.sendOnEnter ? 'bg-[#60a5fa]/30' : 'bg-white/10'}`}
+                                            onClick={() => handleToggle('sendOnEnter')}
+                                        >
+                                            <motion.div
+                                                animate={{ x: toggles.sendOnEnter ? 20 : 0 }}
+                                                className="w-4 h-4 bg-[#60a5fa] rounded-full absolute top-1"
+                                            />
+                                        </div>
+                                    </motion.div>
+
+                                    {/* Auto-scroll to Bottom */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                                                <MaterialIcon name="vertical_align_bottom" className="text-green-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base">Auto-scroll to Bottom</p>
+                                                <p className="text-xs text-[#adaaaa]">Keep latest messages visible</p>
+                                            </div>
+                                        </div>
+                                        <div
+                                            className={`w-12 h-6 rounded-full relative p-1 cursor-pointer transition-colors ${toggles.autoScroll ? 'bg-green-500/30' : 'bg-white/10'}`}
+                                            onClick={() => handleToggle('autoScroll')}
+                                        >
+                                            <motion.div
+                                                animate={{ x: toggles.autoScroll ? 20 : 0 }}
+                                                className="w-4 h-4 bg-green-500 rounded-full absolute top-1"
+                                            />
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            </section>
+
+                            {/* AI Model Configuration */}
+                            <section className="space-y-4">
+                                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                                    <MaterialIcon name="smart_toy" className="text-[#f472b6]" />
+                                    <h2 className="font-['Space_Grotesk'] text-sm uppercase tracking-[0.2em] font-semibold text-[#f472b6]">
+                                        AI Model Configuration
+                                    </h2>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Model Selection */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5"
+                                    >
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="w-10 h-10 rounded-lg bg-[#f472b6]/20 flex items-center justify-center">
+                                                <MaterialIcon name="psychology" className="text-[#f472b6]" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base">AI Model</p>
+                                                <p className="text-xs text-[#adaaaa]">Choose language model</p>
+                                            </div>
+                                        </div>
+                                        <select
+                                            value={preferences.model}
+                                            onChange={(e) => handlePreferenceChange('model', e.target.value)}
+                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#f472b6]/50 text-white"
+                                        >
+                                            <option value="gpt-4">GPT-4 (Most Capable)</option>
+                                            <option value="gpt-3.5">GPT-3.5 Turbo (Fast)</option>
+                                            <option value="claude-3">Claude 3 Opus</option>
+                                            <option value="local-llm">Local LLM (Offline)</option>
+                                        </select>
+                                    </motion.div>
+
+                                    {/* Context Length */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5 flex flex-col"
+                                    >
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="w-10 h-10 rounded-lg bg-[#f472b6]/20 flex items-center justify-center">
+                                                <MaterialIcon name="account_tree" className="text-[#f472b6]" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-center">
+                                                    <p className="font-bold text-base">Context Window</p>
+                                                    <span className="text-[10px] font-['Space_Grotesk'] text-[#f472b6] font-bold">{sliders.contextLength}%</span>
+                                                </div>
+                                                <p className="text-xs text-[#adaaaa]">Memory capacity per conversation</p>
+                                            </div>
+                                        </div>
+                                        <div className="relative flex-1">
+                                            <input
+                                                className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-[#f472b6]"
+                                                type="range"
+                                                min="10"
+                                                max="100"
+                                                value={sliders.contextLength}
+                                                onChange={(e) => handleSliderChange("contextLength", parseInt(e.target.value))}
+                                            />
+                                            <motion.div
+                                                className="absolute left-0 top-0 h-2 bg-[#f472b6] rounded-lg pointer-events-none"
+                                                style={{ width: `${sliders.contextLength}%` }}
+                                                transition={springTransition}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between text-[8px] text-[#adaaaa] mt-2">
+                                            <span>Compact</span>
+                                            <span>Extended</span>
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            </section>
+
+                            {/* Data & Privacy Section */}
+                            <section className="space-y-4">
+                                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                                    <MaterialIcon name="privacy_tip" className="text-[#4ade80]" />
+                                    <h2 className="font-['Space_Grotesk'] text-sm uppercase tracking-[0.2em] font-semibold text-[#4ade80]">
+                                        Data & Privacy
+                                    </h2>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Export Chat History */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-lg bg-[#4ade80]/20 flex items-center justify-center">
+                                                <MaterialIcon name="download" className="text-[#4ade80]" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base">Export Chat History</p>
+                                                <p className="text-xs text-[#adaaaa]">Download all conversations as JSON</p>
+                                            </div>
+                                        </div>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={handleExportData}
+                                            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#4ade80]/10 text-[#4ade80] hover:bg-[#4ade80]/20 transition-all"
+                                        >
+                                            Export
+                                        </motion.button>
+                                    </motion.div>
+
+                                    {/* Clear Cache */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        className="p-6 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                                                <MaterialIcon name="cleaning_services" className="text-orange-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base">Clear Cache</p>
+                                                <p className="text-xs text-[#adaaaa]">Remove temporary files</p>
+                                            </div>
+                                        </div>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={handleClearCache}
+                                            className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition-all"
+                                        >
+                                            Clean
+                                        </motion.button>
+                                    </motion.div>
+                                </div>
+                            </section>
+
                         </div> {/* Close main content grid */}
                     </div> {/* Close content wrapper (p-8) */}
 

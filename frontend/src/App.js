@@ -1,6 +1,8 @@
 import './index.css';
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { settingsApi } from "./api/settings.api";
 
 // Pages
 import Chat from "./pages/Chat";               // default export
@@ -32,6 +34,27 @@ function Home() {
 }
 
 function App() {
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const fetchAndApplySettings = async () => {
+      try {
+        const response = await settingsApi.getPreferences();
+        const prefs = response.data.preferences;
+        if (prefs && prefs.ui_prefs && prefs.ui_prefs.fontSize) {
+          const size = prefs.ui_prefs.fontSize;
+          const html = document.documentElement;
+          html.classList.remove('font-size-small', 'font-size-medium', 'font-size-large', 'font-size-xlarge');
+          html.classList.add(`font-size-${size}`);
+        }
+      } catch (error) {
+        console.error("Failed to load global settings:", error);
+      }
+    };
+    fetchAndApplySettings();
+  }, []);
+
   return (
     <div className="bg-surface text-on-surface min-h-screen">
       <Router>

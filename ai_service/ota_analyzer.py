@@ -4,19 +4,17 @@ import re
 class OTAAnalyzer:
     def __init__(self):
         self.transformer = None
-        print("⏳ Checking OTA model status...")
+        print("[OTA] Checking model status...")
         try:
-            # Attempt to load model but skip if server is down (503)
-            # local_files_only=True would be safer but we want to download once if possible
             self.transformer = pipeline(
-                "sentiment-analysis", 
+                "sentiment-analysis",
                 model="wonrax/phobert-base-vietnamese-sentiment",
                 device=-1
             )
-            print("✅ OTA Transformer Loaded.")
+            print("[OTA] Transformer loaded.")
         except Exception as e:
-            print(f"⚠️ HuggingFace 503 or Connection Error: {e}")
-            print("🚀 Switching to 'Ontology-Only' mode for maximum stability.")
+            print(f"[OTA] HuggingFace error: {e}")
+            print("[OTA] Switching to Ontology-Only mode.")
 
         # --- ONTOLOGY DICTIONARIES (Simplified for Demo) ---
         self.negations = ["không", "chẳng", "chưa", "đừng", "hết", "ít"]

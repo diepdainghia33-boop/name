@@ -30,6 +30,15 @@ class SettingsController extends Controller
         $user->preferences = $mergedPreferences;
         $user->save();
 
+        \App\Models\Notification::create([
+            'user_id' => $user->id,
+            'title' => 'Preferences Updated',
+            'message' => 'Your system preferences have been successfully synchronized.',
+            'type' => 'success',
+            'icon' => 'settings',
+            'is_read' => false
+        ]);
+
         return response()->json([
             'message' => 'Preferences updated successfully',
             'preferences' => $user->preferences
@@ -39,6 +48,7 @@ class SettingsController extends Controller
     public function exportData(Request $request)
     {
         $user = $request->user();
+        $chatHistory = $user->conversations()->with('messages')->get();
 
         return response()->json([
             'user' => [
@@ -47,6 +57,7 @@ class SettingsController extends Controller
                 'created_at' => $user->created_at,
             ],
             'preferences' => $user->preferences,
+            'chat_history' => $chatHistory,
             'exported_at' => now()->toIso8601String()
         ]);
     }
@@ -74,10 +85,25 @@ class SettingsController extends Controller
 
     public function clearCache(Request $request)
     {
+        $user = $request->user();
+        
+        // Clear system cache (optional/aggressive)
         \Illuminate\Support\Facades\Cache::flush();
+        
+        // Clear user-specific activity logs
+        \App\Models\ActivityLog::where('user_id', $user->id)->delete();
+
+        \App\Models\Notification::create([
+            'user_id' => $user->id,
+            'title' => 'System Cleanup',
+            'message' => 'Cache and activity logs have been cleared successfully.',
+            'type' => 'warning',
+            'icon' => 'cleaning_services',
+            'is_read' => false
+        ]);
 
         return response()->json([
-            'message' => 'Cache cleared successfully.'
+            'message' => 'System cache and activity logs cleared successfully.'
         ]);
     }
 

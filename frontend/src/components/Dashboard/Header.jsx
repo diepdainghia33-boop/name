@@ -1,6 +1,8 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import NotificationDropdown from "./NotificationDropdown";
 
 export default function Header({ toggleSidebar, rightOpen }) {
+    const [showNotifications, setShowNotifications] = useState(false);
     return (
         <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -12,8 +14,15 @@ export default function Header({ toggleSidebar, rightOpen }) {
             </div>
             <div className="flex items-center gap-6">
                 <div className="relative">
-                    <span className="material-symbols-outlined text-gray-400 hover:text-white transition-all cursor-pointer">notifications</span>
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#fbabff] rounded-full"></div>
+                    <div onClick={() => setShowNotifications(!showNotifications)}>
+                        <span className="material-symbols-outlined text-gray-400 hover:text-white transition-all cursor-pointer">notifications</span>
+                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#fbabff] rounded-full shadow-[0_0_8px_rgba(251,171,255,0.7)]"></div>
+                    </div>
+                    
+                    <NotificationDropdown
+                        isOpen={showNotifications}
+                        onClose={() => setShowNotifications(false)}
+                    />
                 </div>
                 <button
                     onClick={toggleSidebar}

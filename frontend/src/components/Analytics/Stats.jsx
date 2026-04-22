@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, Smile, Gauge, Zap, Clock } from "lucide-react";
+import { MessageSquare, Smile, Zap, Clock } from "lucide-react";
 import axios from "axios";
+import { api } from "../../api/axios";
 import { motion } from "framer-motion";
 
 export default function Stats() {
     const [stats, setStats] = useState({
+        totalConversations: 0,
         totalMessages: 0,
-        satisfaction: 4.8,
-        responseTime: 1.2,
+        satisfaction: null,
+        responseTime: null,
         tokensUsed: 0,
         trend: 12
     });
@@ -15,27 +17,29 @@ export default function Stats() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const [mainRes, chatbotRes] = await Promise.all([
-                    axios.get("http://127.0.0.1:8001/api/stats"),
-                    axios.get("http://127.0.0.1:8001/analytics/chatbot")
+                const [laravelRes, chatbotRes] = await Promise.all([
+                    api.get("/dashboard"),
+                    axios.get("http://127.0.0.1:8001/analytics/chatbot").catch(() => ({ data: {} }))
                 ]);
 
                 setStats(prev => {
                     const newStats = { ...prev };
 
-                    // Safely extract total_messages
-                    if (mainRes.data && mainRes.data.total_messages != null && !isNaN(mainRes.data.total_messages)) {
-                        newStats.totalMessages = Number(mainRes.data.total_messages);
+                    // Data from Laravel
+                    if (laravelRes.data?.metrics) {
+                        const m = laravelRes.data.metrics;
+                        newStats.totalConversations = m.conversations || 0;
+                        newStats.totalMessages = m.total_messages || 0;
+                        if (m.satisfaction !== undefined) newStats.satisfaction = m.satisfaction;
+                        if (m.tokens !== undefined && m.tokens !== null) newStats.tokensUsed = m.tokens;
+                        if (m.latency !== undefined) newStats.responseTime = m.latency;
                     }
 
-                    // Safely extract chatbot stats
+                    // Safely extract chatbot stats from AI service (fallback/override if active)
                     if (chatbotRes.data?.stats) {
                         const cs = chatbotRes.data.stats;
                         if (cs.tokens_used != null && !isNaN(cs.tokens_used)) {
                             newStats.tokensUsed = Number(cs.tokens_used);
-                        }
-                        if (cs.avg_response_time != null && !isNaN(cs.avg_response_time)) {
-                            newStats.responseTime = Number(cs.avg_response_time);
                         }
                     }
 
@@ -59,17 +63,27 @@ export default function Stats() {
 
     // Ensure all values are numbers
     const safeStats = {
+        totalConversations: Number(stats.totalConversations) || 0,
         totalMessages: Number(stats.totalMessages) || 0,
-        satisfaction: Number(stats.satisfaction) || 4.8,
-        responseTime: Number(stats.responseTime) || 1.2,
+        satisfaction: stats.satisfaction === null || stats.satisfaction === undefined || Number.isNaN(Number(stats.satisfaction))
+            ? null
+            : Number(stats.satisfaction),
+        responseTime: stats.responseTime === null || stats.responseTime === undefined || Number.isNaN(Number(stats.responseTime))
+            ? null
+            : Number(stats.responseTime),
         tokensUsed: Number(stats.tokensUsed) || 0,
         trend: Number(stats.trend) || 0
+    };
+
+    const formatResponseTime = (value) => {
+        if (value === null || value === undefined) return "--";
+        return `${Number(value).toFixed(1)}s`;
     };
 
     const statCards = [
         {
             title: "Total Conversations",
-            value: formatNumber(safeStats.totalMessages),
+            value: formatNumber(safeStats.totalConversations),
             icon: <MessageSquare size={20} />,
             color: "text-blue-400",
             bg: "bg-blue-500/10",
@@ -79,7 +93,7 @@ export default function Stats() {
         },
         {
             title: "User Satisfaction",
-            value: safeStats.satisfaction.toFixed(1) + "/5.0",
+            value: safeStats.satisfaction === null ? "--" : `${safeStats.satisfaction.toFixed(1)}/5.0`,
             icon: <Smile size={20} />,
             color: "text-emerald-400",
             bg: "bg-emerald-500/10",
@@ -89,7 +103,7 @@ export default function Stats() {
         },
         {
             title: "Avg Response Time",
-            value: safeStats.responseTime.toFixed(1) + "s",
+            value: formatResponseTime(safeStats.responseTime),
             icon: <Clock size={20} />,
             color: "text-cyan-400",
             bg: "bg-cyan-500/10",

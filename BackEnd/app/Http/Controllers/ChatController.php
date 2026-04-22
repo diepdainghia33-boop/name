@@ -8,11 +8,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NewMessageNotification;
 
 class ChatController extends Controller
 {
     /** AI service base URL */
-    private string $aiServiceUrl = 'http://127.0.0.1:8001';
+    private string $aiServiceUrl;
+
+    public function __construct()
+    {
+        $this->aiServiceUrl = config('services.ai.url', 'http://127.0.0.1:8001');
+    }
 
     public function getConversations()
     {
@@ -43,11 +50,20 @@ class ChatController extends Controller
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
             'file'            => 'nullable|file|mimes:pdf,xlsx,xls,csv|max:10240',
             'search_mode'     => 'nullable|boolean',
+            'model'           => 'nullable|string',
+            'context_length'  => 'nullable|integer',
+            'precision'       => 'nullable|integer',
         ]);
 
         $userId         = Auth::id();
         $conversationId = $request->conversation_id;
         $searchMode     = $request->boolean('search_mode');
+        $requestedModel = $request->input('model');
+        $contextLength  = $request->input('context_length', 4000);
+        $precision      = $request->input('precision', 80);
+
+        // Map 1-100 precision to 1.0-0.0 temperature
+        $temperature = (101 - $precision) / 100;
 
         // ── Resolve or create conversation ────────────────────────────────────
         if ($conversationId) {
@@ -86,6 +102,16 @@ class ChatController extends Controller
             $path      = $file->store('chat_files', 'public');
             $filePath  = asset('storage/' . $path);
             $type      = 'document';
+
+            // Create notification for file analysis
+            \App\Models\Notification::create([
+                'user_id' => $userId,
+                'title' => 'Document Received',
+                'message' => 'The system is analyzing your ' . strtoupper($fileType) . ' document.',
+                'type' => 'info',
+                'icon' => 'description',
+                'is_read' => false
+            ]);
         }
 
         // ── Save user message ──────────────────────────────────────────────────
@@ -125,7 +151,9 @@ class ChatController extends Controller
         // ── Call AI service ────────────────────────────────────────────────────
         $aiText    = null;
         $aiTokens  = 0;
-        $aiModel   = 'llama-3.3-70b-versatile';
+        $aiModel   = $requestedModel ?? 'llama-3.3-70b-versatile';
+        $responseTimeMs = null;
+        $aiRequestStartedAt = microtime(true);
 
         try {
             if ($useV2) {
@@ -134,12 +162,18 @@ class ChatController extends Controller
                     'history'        => $history,
                     'files'          => $files,
                     'search_enabled' => $searchMode,
+                    'model'          => $requestedModel,
+                    'max_tokens'     => $contextLength,
+                    'temperature'    => $temperature,
                 ]);
-                $aiModel = 'claude-3-5-sonnet-20241022';
+                $aiModel = $requestedModel ?? 'claude-3-5-sonnet-20241022';
             } else {
                 // Use original Groq endpoint
                 $aiResponse = Http::timeout(30)->post("{$this->aiServiceUrl}/api/chat", [
-                    'history' => $history,
+                    'history'     => $history,
+                    'model'       => $requestedModel,
+                    'max_tokens'  => $contextLength,
+                    'temperature' => $temperature,
                 ]);
             }
 
@@ -153,6 +187,8 @@ class ChatController extends Controller
             }
         } catch (\Exception $e) {
             Log::error('AI service unreachable: ' . $e->getMessage());
+        } finally {
+            $responseTimeMs = (int) max(1, round((microtime(true) - $aiRequestStartedAt) * 1000));
         }
 
         // Fallback if AI service is down
@@ -175,13 +211,43 @@ class ChatController extends Controller
             'role'            => 'bot',
             'type'            => 'text',
             'tokens'          => $aiTokens,
+            'response_time_ms' => $responseTimeMs,
         ]);
+
+        // ── Send Email Notification if enabled ─────────────────────────────────
+        try {
+            $user = Auth::user();
+            $prefs = $user->preferences;
+            if (isset($prefs['toggles']['emailNotifications']) && $prefs['toggles']['emailNotifications']) {
+                Mail::to($user->email)->send(new NewMessageNotification($user, $botMessage));
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send email notification: ' . $e->getMessage());
+        }
 
         return response()->json([
             'conversation_id' => $conversationId,
             'user_message'    => $userMessage,
             'bot_message'     => $botMessage,
         ]);
+    }
+
+    public function submitFeedback(Request $request, $id)
+    {
+        $request->validate([
+            'feedback' => 'required|integer|in:1,-1,0',
+        ]);
+
+        $message = Message::where('id', $id)->firstOrFail();
+        
+        // Ensure message belongs to user
+        $conversation = Conversation::where('id', $message->conversation_id)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $message->update(['feedback' => $request->feedback]);
+
+        return response()->json(['message' => 'Feedback submitted successfully']);
     }
 
     public function deleteConversation($id)

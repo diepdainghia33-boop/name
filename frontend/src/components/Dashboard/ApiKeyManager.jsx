@@ -1,69 +1,62 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MaterialIcon from "./MaterialIcon";
+import { apiKeyApi } from "../../api/apiKey.api";
 
 const springTransition = { type: "spring", stiffness: 400, damping: 30 };
 
-const initialApiKeys = [
-    {
-        id: 1,
-        name: "Production Server",
-        key: "sk-7x8a9b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
-        createdAt: "2024-01-15",
-        lastUsed: "2 hours ago",
-        permissions: ["read", "write", "delete"],
-        active: true
-    },
-    {
-        id: 2,
-        name: "Development Environment",
-        key: "sk-dev_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9",
-        createdAt: "2024-02-20",
-        lastUsed: "1 day ago",
-        permissions: ["read", "write"],
-        active: true
-    },
-    {
-        id: 3,
-        name: "Testing Bot",
-        key: "sk-test_z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3h2g1f0",
-        createdAt: "2024-03-10",
-        lastUsed: "1 week ago",
-        permissions: ["read"],
-        active: false
-    }
-];
-
 export default function ApiKeyManager({ isOpen, onClose }) {
-    const [apiKeys, setApiKeys] = useState(initialApiKeys);
+    const [apiKeys, setApiKeys] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [newKeyName, setNewKeyName] = useState("");
     const [newKeyPermissions, setNewKeyPermissions] = useState(["read"]);
     const [copiedId, setCopiedId] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
-    const handleCreateKey = () => {
-        if (!newKeyName.trim()) return;
+    useEffect(() => {
+        if (isOpen) {
+            fetchKeys();
+        }
+    }, [isOpen]);
 
-        const newKey = {
-            id: Date.now(),
-            name: newKeyName,
-            key: `sk-${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
-            createdAt: new Date().toISOString().split('T')[0],
-            lastUsed: "Never",
-            permissions: [...newKeyPermissions],
-            active: true
-        };
-
-        setApiKeys([...apiKeys, newKey]);
-        setNewKeyName("");
-        setNewKeyPermissions(["read"]);
-        setShowCreateForm(false);
+    const fetchKeys = async () => {
+        setIsLoading(true);
+        try {
+            const response = await apiKeyApi.getKeys();
+            setApiKeys(response.data);
+        } catch (error) {
+            console.error("Failed to fetch API keys:", error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleDeleteKey = (id) => {
-        setApiKeys(apiKeys.filter(key => key.id !== id));
-        setDeleteConfirmId(null);
+    const handleCreateKey = async () => {
+        if (!newKeyName.trim()) return;
+
+        try {
+            const response = await apiKeyApi.createKey({
+                name: newKeyName,
+                permissions: newKeyPermissions
+            });
+            setApiKeys([response.data, ...apiKeys]);
+            setNewKeyName("");
+            setNewKeyPermissions(["read"]);
+            setShowCreateForm(false);
+        } catch (error) {
+            console.error("Failed to create API key:", error);
+        }
+    };
+
+    const handleDeleteKey = async (id) => {
+        try {
+            await apiKeyApi.deleteKey(id);
+            setApiKeys(apiKeys.filter(key => key.id !== id));
+            setDeleteConfirmId(null);
+        } catch (error) {
+            console.error("Failed to delete API key:", error);
+        }
     };
 
     const handleCopyKey = (id, key) => {
@@ -73,9 +66,9 @@ export default function ApiKeyManager({ isOpen, onClose }) {
     };
 
     const handleToggleActive = (id) => {
-        setApiKeys(apiKeys.map(key =>
-            key.id === id ? { ...key, active: !key.active } : key
-        ));
+        // Sanctum tokens don't have a simple 'active' toggle in this implementation
+        // but we could implement it by revoking/restoring if needed.
+        // For now, we'll keep it as UI only or disable it.
     };
 
     const handlePermissionToggle = (perm) => {
@@ -127,7 +120,14 @@ export default function ApiKeyManager({ isOpen, onClose }) {
                         </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-                            {!showCreateForm && (
+                            {isLoading ? (
+                                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                                    <div className="w-8 h-8 border-2 border-[#85adff] border-t-transparent rounded-full animate-spin" />
+                                    <p className="text-sm text-[#adaaaa]">Loading API keys...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {!showCreateForm && (
                                 <motion.button
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -301,7 +301,9 @@ export default function ApiKeyManager({ isOpen, onClose }) {
                                     ))
                                 )}
                             </div>
-                        </div>
+                        </>
+                    )}
+                </div>
 
                         <div className="p-3 border-t border-white/5 bg-black/20">
                             <p className="text-[10px] text-[#adaaaa] text-center">

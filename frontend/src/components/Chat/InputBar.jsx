@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, Paperclip, X, Mic, Globe, FileText, FileSpreadsheet, Image as ImageIcon, File, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function InputBar({ onSend, isLoading }) {
+export default function InputBar({ onSend, isLoading, sendOnEnter = true }) {
     const [inputValue, setInputValue]     = useState("");
     const [selectedFiles, setSelectedFiles] = useState([]); // Array of {file, preview, type}
     const [searchMode, setSearchMode]       = useState(false);
@@ -22,10 +22,11 @@ export default function InputBar({ onSend, isLoading }) {
     useEffect(() => {
         return () => {
             selectedFiles.forEach(f => {
-                if (f.preview && f.preview.startsWith('blob:')) URL.revokeObjectURL(f.preview);
+                if (f.preview && typeof f.preview === 'string' && f.preview.startsWith('blob:')) URL.revokeObjectURL(f.preview);
+                if (f.preview && typeof f.preview === 'object' && f.preview.url) URL.revokeObjectURL(f.preview.url);
             });
         };
-    }, []);
+    }, [selectedFiles]);
 
     const processFile = useCallback((file) => {
         const fileType = getFileType(file);
@@ -63,18 +64,12 @@ export default function InputBar({ onSend, isLoading }) {
         const hasContent = trimmed || selectedFiles.length > 0;
         if (!hasContent) return;
 
-        // Send all files as attachments
-        selectedFiles.forEach(f => {
-            if (f.type === 'image') {
-                onSend(trimmed, f.file, null, searchMode);
-            } else {
-                onSend(trimmed, null, f.file, searchMode);
-            }
-        });
+        // Collect all files to send together
+        const images = selectedFiles.filter(f => f.type === 'image').map(f => f.file);
+        const documents = selectedFiles.filter(f => f.type !== 'image').map(f => f.file);
 
-        if (selectedFiles.length === 0) {
-            onSend(trimmed, null, null, searchMode);
-        }
+        // Send once with all attachments
+        onSend(trimmed, images.length > 0 ? images[0] : null, documents.length > 0 ? documents[0] : null, searchMode);
 
         // Reset state
         setInputValue("");
@@ -96,7 +91,7 @@ export default function InputBar({ onSend, isLoading }) {
     };
 
     const handleKeyDown = (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+        if (e.key === "Enter" && !e.shiftKey && sendOnEnter) {
             e.preventDefault();
             handleSend();
         }
@@ -160,7 +155,7 @@ export default function InputBar({ onSend, isLoading }) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
-            <div className="max-w-4xl mx-auto space-y-3">
+            <div className="max-w-5xl mx-auto space-y-3">
 
                 {/* Drag overlay */}
                 <AnimatePresence>

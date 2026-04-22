@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { api } from "../../api/axios";
 
 // Helper to convert polar to cartesian
 const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -37,13 +37,20 @@ export default function RightPanel() {
         { name: "Architectural Consulting", value: 25, color: "#f472b6" },
         { name: "General Chat", value: 40, color: "#9ca3af" },
     ]);
+    const [metrics, setMetrics] = useState({ health: null, latency: null });
 
     useEffect(() => {
         const fetchIntents = async () => {
             try {
-                const response = await axios.get("http://127.0.0.1:8001/api/analytics");
+                const response = await api.get("/analytics?days=7");
                 if (response.data?.intents && Array.isArray(response.data.intents)) {
                     setIntents(response.data.intents);
+                }
+                if (response.data?.health !== undefined) {
+                    setMetrics({
+                        health: response.data.health,
+                        latency: response.data.latency
+                    });
                 }
             } catch (error) {
                 console.error("Error fetching intents:", error);
@@ -161,11 +168,15 @@ export default function RightPanel() {
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-black/20 p-3 rounded-lg border border-white/5">
                             <p className="text-[10px] text-gray-500 uppercase">Uptime</p>
-                            <p className="text-lg font-black text-emerald-400">99.9%</p>
+                            <p className="text-lg font-black text-emerald-400">
+                                {metrics.health === null || metrics.health === undefined ? "--" : `${metrics.health}%`}
+                            </p>
                         </div>
                         <div className="bg-black/20 p-3 rounded-lg border border-white/5">
                             <p className="text-[10px] text-gray-500 uppercase">Latency</p>
-                            <p className="text-lg font-black text-blue-400">45ms</p>
+                            <p className="text-lg font-black text-blue-400">
+                                {metrics.latency === null || metrics.latency === undefined ? "--" : `${Number(metrics.latency).toFixed(1)}s`}
+                            </p>
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { registerApi } from "../api/auth.api";
 import { useNavigate, Link } from "react-router-dom";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function RegisterPage() {
     const [name, setName] = useState("");
@@ -9,8 +10,17 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const redirectTimerRef = useRef(null);
 
     const navigate = useNavigate();
+
+    useEffect(() => {
+        return () => {
+            if (redirectTimerRef.current) {
+                window.clearTimeout(redirectTimerRef.current);
+            }
+        };
+    }, []);
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -25,40 +35,32 @@ export default function RegisterPage() {
                 password
             });
 
-            // Hiển thị thông báo thành công từ backend
-            setSuccessMessage(res.data.message);
-            
-            // Tùy chọn: Tự động chuyển trang sau vài giây
-            setTimeout(() => {
-                navigate("/login");
+            setSuccessMessage(res.data.message || "Đăng ký thành công. Vui lòng đăng nhập.");
+            redirectTimerRef.current = window.setTimeout(() => {
+                navigate("/login", { replace: true });
             }, 5000);
-
         } catch (err) {
-            setError(err.response?.data?.message || "Lỗi đăng ký. Vui lòng kiểm tra lại thông tin.");
+            setError(
+                getApiErrorMessage(err, "Lỗi đăng ký. Vui lòng kiểm tra lại thông tin.")
+            );
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     return (
         <div className="relative bg-[#0e0e0e] text-white min-h-screen flex flex-col overflow-hidden">
-
-            {/* BACKGROUND */}
             <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-500/10 blur-[180px] rounded-full"></div>
             <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-500/10 blur-[180px] rounded-full"></div>
 
-            {/* HEADER */}
             <header className="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-20 bg-black/40 backdrop-blur-xl border-b border-white/5">
                 <div className="text-lg font-semibold tracking-wide text-blue-400">
                     Architect AI
                 </div>
             </header>
 
-            {/* MAIN */}
             <main className="flex-grow flex items-center justify-center pt-20">
                 <div className="w-full max-w-[1440px] grid md:grid-cols-2 min-h-[820px] rounded-3xl overflow-hidden border border-white/5 shadow-[0_0_60px_rgba(0,0,0,0.5)]">
-
-                    {/* LEFT */}
                     <div className="hidden md:flex relative items-center justify-center p-12 bg-[#111]">
                         <img
                             src="https://images.unsplash.com/photo-1506744038136-46273834b3fb"
@@ -75,11 +77,8 @@ export default function RegisterPage() {
                         </div>
                     </div>
 
-                    {/* RIGHT */}
                     <div className="flex flex-col justify-center items-center px-6 md:px-20 py-12 bg-black/40 backdrop-blur-2xl">
-
                         <div className="w-full max-w-md">
-
                             <div className="mb-8">
                                 <h1 className="text-3xl font-bold mb-2">
                                     Create Account
@@ -89,10 +88,7 @@ export default function RegisterPage() {
                                 </p>
                             </div>
 
-                            {/* FORM */}
                             <form className="space-y-5" onSubmit={handleRegister}>
-                                
-                                {/* NAME */}
                                 <div>
                                     <label className="text-xs text-gray-400 uppercase">
                                         Full Name
@@ -107,7 +103,6 @@ export default function RegisterPage() {
                                     />
                                 </div>
 
-                                {/* EMAIL */}
                                 <div>
                                     <label className="text-xs text-gray-400 uppercase">
                                         Email
@@ -122,7 +117,6 @@ export default function RegisterPage() {
                                     />
                                 </div>
 
-                                {/* PASSWORD */}
                                 <div>
                                     <label className="text-xs text-gray-400 uppercase">
                                         Password
@@ -138,7 +132,6 @@ export default function RegisterPage() {
                                     />
                                 </div>
 
-                                {/* SUCCESS MESSAGE */}
                                 {successMessage && (
                                     <div className="p-4 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-3">
                                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse transition-all"></div>
@@ -146,14 +139,12 @@ export default function RegisterPage() {
                                     </div>
                                 )}
 
-                                {/* ERROR */}
                                 {error && (
                                     <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 text-sm">
                                         {error}
                                     </div>
                                 )}
 
-                                {/* BUTTON */}
                                 <button
                                     type="submit"
                                     disabled={loading}
@@ -163,7 +154,6 @@ export default function RegisterPage() {
                                 </button>
                             </form>
 
-                            {/* FOOTER */}
                             <p className="text-center mt-8 text-sm text-gray-400">
                                 Sudah punya tài khoản?{" "}
                                 <Link to="/login" className="text-blue-400 hover:underline">

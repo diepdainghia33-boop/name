@@ -1,44 +1,40 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import MaterialIcon from "./MaterialIcon";
+import { api } from "../../api/axios";
 
 const springTransition = { type: "spring", stiffness: 400, damping: 30 };
 
-const sampleNotifications = [
-    {
-        id: 1,
-        title: "Profile Updated",
-        message: "Your account information has been successfully updated.",
-        time: "2 min ago",
-        type: "success",
-        icon: "person_check"
-    },
-    {
-        id: 2,
-        title: "Security Alert",
-        message: "New login detected from Chrome on Windows.",
-        time: "15 min ago",
-        type: "warning",
-        icon: "security"
-    },
-    {
-        id: 3,
-        title: "System Maintenance",
-        message: "Scheduled maintenance tonight at 2:00 AM UTC.",
-        time: "1 hour ago",
-        type: "info",
-        icon: "build"
-    },
-    {
-        id: 4,
-        title: "Password Changed",
-        message: "Your password was successfully changed.",
-        time: "2 hours ago",
-        type: "success",
-        icon: "lock"
-    }
-];
-
 export default function NotificationDropdown({ isOpen, onClose }) {
+    const [notifications, setNotifications] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchNotifications();
+        }
+    }, [isOpen]);
+
+    const fetchNotifications = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get("/notifications");
+            setNotifications(response.data);
+        } catch (error) {
+            console.error("Error fetching notifications:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const markAsRead = async (id) => {
+        try {
+            await api.post(`/notifications/${id}/read`);
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+        } catch (error) {
+            console.error("Error marking notification as read:", error);
+        }
+    };
     const getTypeColor = (type) => {
         switch (type) {
             case "success": return "text-green-400 bg-green-500/10";
@@ -73,7 +69,7 @@ export default function NotificationDropdown({ isOpen, onClose }) {
                         <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
                             <div>
                                 <h3 className="font-bold text-white">Notifications</h3>
-                                <p className="text-xs text-[#adaaaa]">{sampleNotifications.length} unread</p>
+                                <p className="text-xs text-[#adaaaa]">{notifications.filter(n => !n.is_read).length} unread</p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -83,40 +79,46 @@ export default function NotificationDropdown({ isOpen, onClose }) {
                             </button>
                         </div>
 
-                        {/* Notification List */}
                         <div className="overflow-y-auto max-h-[60vh] custom-scrollbar p-2">
-                            {sampleNotifications.map((notif, index) => (
-                                <motion.div
-                                    key={notif.id}
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                    className="p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-all group mb-2 border border-transparent hover:border-white/5"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        {/* Icon */}
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${getTypeColor(notif.type)}`}>
-                                            <MaterialIcon name={notif.icon} className="text-sm" />
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <h4 className="font-bold text-sm text-white group-hover:text-[#85adff] transition-colors">
-                                                    {notif.title}
-                                                </h4>
-                                                <span className="text-[10px] text-[#adaaaa] shrink-0">{notif.time}</span>
+                            {loading ? (
+                                <div className="p-8 text-center text-xs text-slate-500 uppercase tracking-widest font-black">Syncing...</div>
+                            ) : notifications.length === 0 ? (
+                                <div className="p-8 text-center text-xs text-slate-500 uppercase tracking-widest font-black">No new alerts</div>
+                            ) : (
+                                notifications.map((notif, index) => (
+                                    <motion.div
+                                        key={notif.id}
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                        onClick={() => markAsRead(notif.id)}
+                                        className="p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-all group mb-2 border border-transparent hover:border-white/5"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            {/* Icon */}
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${getTypeColor(notif.type)}`}>
+                                                <MaterialIcon name={notif.icon} className="text-sm" />
                                             </div>
-                                            <p className="text-xs text-[#adaaaa] mt-1 leading-relaxed line-clamp-2">
-                                                {notif.message}
-                                            </p>
-                                        </div>
 
-                                        {/* Unread Indicator */}
-                                        <div className="w-2 h-2 rounded-full bg-[#fbabff] mt-2 shrink-0" />
-                                    </div>
-                                </motion.div>
-                            ))}
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <h4 className={`font-bold text-sm ${notif.is_read ? 'text-slate-500' : 'text-white group-hover:text-[#85adff]'} transition-colors`}>
+                                                        {notif.title}
+                                                    </h4>
+                                                    <span className="text-[10px] text-[#adaaaa] shrink-0">{notif.time}</span>
+                                                </div>
+                                                <p className={`text-xs mt-1 leading-relaxed line-clamp-2 ${notif.is_read ? 'text-slate-600' : 'text-[#adaaaa]'}`}>
+                                                    {notif.message}
+                                                </p>
+                                            </div>
+
+                                            {/* Unread Indicator */}
+                                            {!notif.is_read && <div className="w-2 h-2 rounded-full bg-[#fbabff] mt-2 shrink-0 shadow-[0_0_8px_rgba(251,171,255,0.8)]" />}
+                                        </div>
+                                    </motion.div>
+                                ))
+                            )}
                         </div>
 
                         {/* Footer */}
