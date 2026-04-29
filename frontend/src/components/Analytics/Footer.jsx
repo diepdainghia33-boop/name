@@ -1,18 +1,16 @@
 export default function Footer() {
     return (
-        <footer className="mt-auto py-6 px-8 border-t border-white/5">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                {/* Left */}
-                <div className="flex items-center gap-6">
-                    <span className="text-gray-600 text-xs">© 2024 Ethereal Architect AI</span>
+        <footer className="mt-auto border-t border-border/70 px-8 py-6">
+            <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+                <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-accent" />
+                    <span className="text-xs text-text-dim">© 2024 ChatID Architect</span>
                 </div>
 
-                {/* Right */}
                 <div className="flex items-center gap-6">
-                    <a href="#" className="text-xs text-gray-500 hover:text-white transition-colors uppercase tracking-wider">Privacy</a>
-                    <a href="#" className="text-xs text-gray-500 hover:text-white transition-colors uppercase tracking-wider">Documentation</a>
-                    <a href="#" className="text-xs text-gray-500 hover:text-white transition-colors uppercase tracking-wider">Support</a>
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                    <button type="button" className="text-xs uppercase tracking-wider text-text-dim transition-colors hover:text-text">Privacy</button>
+                    <button type="button" className="text-xs uppercase tracking-wider text-text-dim transition-colors hover:text-text">Documentation</button>
+                    <button type="button" className="text-xs uppercase tracking-wider text-text-dim transition-colors hover:text-text">Support</button>
                 </div>
             </div>
         </footer>

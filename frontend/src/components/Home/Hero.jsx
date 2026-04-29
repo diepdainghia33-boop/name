@@ -1,116 +1,221 @@
+import { ArrowUpRight, CheckCircle2, Clock3, Layers3, ShieldCheck, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
+
+const highlights = [
+    { label: "Context memory", value: "Persistent", icon: Layers3 },
+    { label: "System state", value: "Live", icon: ShieldCheck },
+    { label: "Turnaround", value: "< 1 min", icon: Clock3 },
+];
+
+const statusRows = [
+    { label: "Conversation", value: "Structured threads" },
+    { label: "Sources", value: "Files + web + logs" },
+    { label: "Controls", value: "Visible and quiet" },
+    { label: "Output", value: "Readable by default" },
+];
+
 export default function Hero() {
+    const prefersReducedMotion = useReducedMotion();
+
+    const panelTransition = prefersReducedMotion
+        ? { duration: 0.01 }
+        : { duration: 0.75, ease: [0.16, 1, 0.3, 1] };
+
+    const floatTransition = prefersReducedMotion
+        ? { duration: 0.01 }
+        : { duration: 6.5, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" };
+
     return (
-        <section className="relative pt-64 pb-24 px-6 overflow-hidden bg-black text-white">
+        <section className="relative overflow-hidden px-6 pt-28 pb-20 sm:pt-32 lg:pt-36">
+            <div className="pointer-events-none absolute inset-0 app-shell" />
 
-            {/* BACKGROUND BLUR */}
-            <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/20 blur-[140px] rounded-full"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-pink-500/20 blur-[120px] rounded-full"></div>
+            <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={panelTransition}
+                >
+                    <span className="app-chip">
+                        <Sparkles size={12} className="text-accent" />
+                        Dark editorial workspace
+                    </span>
 
-            <div className="relative z-10 max-w-[1400px] mx-auto">
-
-                {/* ===== TOP ===== */}
-                <div className="text-center mb-80">
-
-                    <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-xl">
-                        <span className="w-2 h-2 bg-pink-400 rounded-full animate-pulse"></span>
-                        <span className="text-xs uppercase tracking-widest text-gray-400">
-                            Intelligence Evolved
-                        </span>
-                    </div>
-
-                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold leading-tight mb-6">
-                        The Future of AI is{" "}
-                        <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 text-transparent bg-clip-text">
-                            Here
-                        </span>
+                    <h1 className="mt-6 max-w-3xl text-5xl font-black leading-[0.92] tracking-tight text-text sm:text-6xl lg:text-[5.6rem]">
+                        A calmer command center for AI work.
                     </h1>
 
-                    <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-                        Experience a conversational interface that understands context,
-                        creates structure, and builds the future alongside you.
+                    <p className="mt-6 max-w-2xl text-base leading-8 text-muted sm:text-lg">
+                        Chat, analytics, and system controls live in one place with a grounded dark palette,
+                        clear hierarchy, and one restrained accent that keeps attention where it matters.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <button className="px-8 py-4 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 font-semibold hover:scale-105 transition duration-300 shadow-lg">
-                            Try it Now
-                        </button>
-
-                        <button className="px-8 py-4 rounded-full border border-white/20 hover:bg-white/10 transition">
-                            View Showreel
-                        </button>
+                    <div className="mt-8 flex flex-wrap gap-3">
+                        <Link to="/login" className="app-button-primary">
+                            Open workspace
+                            <ArrowUpRight size={15} />
+                        </Link>
+                        <a href="#features" className="app-button-secondary">
+                            See the layout
+                        </a>
                     </div>
-                </div>
 
-                {/* ===== GRID ===== */}
-                <div className="grid grid-cols-12 gap-10 mt-48 items-stretch">
-
-                    {/* LEFT */}
-                    <div className="col-span-12 lg:col-span-8 h-[520px] md:h-[680px] lg:h-[760px] rounded-3xl overflow-hidden relative group">
-
-                        {/* glow border */}
-                        <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-500/20 to-pink-500/20 blur-xl"></div>
-
-                        <div className="relative h-full rounded-3xl border border-white/10 overflow-hidden">
-                            <img
-                                src="https://images.unsplash.com/photo-1677442135136-760c813028c0"
-                                alt="AI"
-                                className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition duration-700"
-                            />
-
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
-
-                            {/* glass card */}
-                            <div className="absolute bottom-8 left-8 right-8 backdrop-blur-2xl bg-white/5 p-6 rounded-2xl border border-white/10 shadow-xl">
-                                <h4 className="font-semibold text-xl mb-2">Neural Architecture</h4>
-                                <p className="text-sm text-gray-300">
-                                    Real-time processing of complex data structures
+                    <div className="mt-10 grid gap-3 sm:grid-cols-3">
+                        {highlights.map(({ label, value, icon: Icon }) => (
+                            <div key={label} className="app-panel rounded-[24px] p-4">
+                                <div className="mb-6 flex items-center justify-between">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                                        {label}
+                                    </span>
+                                    <Icon size={16} className="text-accent" />
+                                </div>
+                                <p className="text-xl font-black tracking-tight text-text">
+                                    {value}
                                 </p>
+                            </div>
+                        ))}
+                    </div>
+                </motion.div>
 
-                                <div className="mt-4 h-1 bg-white/10 rounded-full overflow-hidden">
-                                    <div className="w-[70%] h-full bg-gradient-to-r from-blue-400 to-pink-400"></div>
+                <motion.div
+                    initial={{ opacity: 0, y: 28 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={prefersReducedMotion ? { duration: 0.01 } : { duration: 0.75, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+                    className="relative"
+                >
+                    <div className="app-panel-strong relative min-h-[520px] overflow-hidden rounded-[36px] p-6 sm:p-8">
+                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,color-mix(in_oklch,var(--color-accent)_14%,transparent)_0%,transparent_28%),radial-gradient(circle_at_82%_16%,color-mix(in_oklch,var(--color-success)_10%,transparent)_0%,transparent_24%),linear-gradient(180deg,transparent,rgba(0,0,0,0.18))] opacity-80" />
+
+                        <motion.div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -left-16 top-10 h-44 w-44 rounded-full bg-accent/10 blur-3xl"
+                            animate={prefersReducedMotion ? { opacity: 0.7 } : { x: [0, 18, 0], y: [0, 10, 0], scale: [1, 1.08, 1] }}
+                            transition={floatTransition}
+                        />
+                        <motion.div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -right-10 bottom-6 h-36 w-36 rounded-full bg-success/10 blur-3xl"
+                            animate={prefersReducedMotion ? { opacity: 0.6 } : { x: [0, -14, 0], y: [0, -8, 0], scale: [1, 1.05, 1] }}
+                            transition={floatTransition}
+                        />
+
+                        {!prefersReducedMotion && (
+                            <motion.div
+                                aria-hidden="true"
+                                className="pointer-events-none absolute left-6 right-6 top-0 h-px bg-gradient-to-r from-transparent via-accent/80 to-transparent"
+                                animate={{ y: [0, 460, 0] }}
+                                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                            />
+                        )}
+
+                        <div className="relative grid h-full gap-4">
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted">
+                                        Session overview
+                                    </p>
+                                    <h2 className="mt-2 text-2xl font-black tracking-tight text-text">
+                                        Calm, visible, controlled.
+                                    </h2>
+                                </div>
+                                <span className="app-chip border-success/30 text-success">
+                                    <CheckCircle2 size={12} />
+                                    Synced
+                                </span>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-[1.15fr_0.85fr]">
+                                <motion.div
+                                    className="app-panel relative overflow-hidden rounded-[30px] p-5"
+                                    animate={prefersReducedMotion ? {} : { y: [0, -6, 0] }}
+                                    transition={floatTransition}
+                                >
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                                                Live thread
+                                            </p>
+                                            <p className="mt-2 text-lg font-black tracking-tight text-text">
+                                                Ready for a new session.
+                                            </p>
+                                        </div>
+                                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-accent/25 bg-accent/10 text-accent">
+                                            <Sparkles size={16} />
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-5 space-y-3">
+                                        <div className="rounded-[22px] border border-border/70 bg-surface px-4 py-3">
+                                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-muted">
+                                                <span className="h-2 w-2 rounded-full bg-success" />
+                                                Routing
+                                            </div>
+                                            <p className="mt-3 text-sm leading-7 text-text-muted">
+                                                Conversation context is staged before the next reply is sent.
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-[22px] border border-border/70 bg-surface/80 px-4 py-3">
+                                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-muted">
+                                                <span className="h-2 w-2 rounded-full bg-accent" />
+                                                Response
+                                            </div>
+                                            <p className="mt-3 text-sm leading-7 text-text-muted">
+                                                Clear output, quieter transitions, and a stable control surface.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+
+                                <div className="grid gap-4">
+                                    {statusRows.map((row, index) => (
+                                        <motion.div
+                                            key={row.label}
+                                            className="app-panel rounded-[26px] p-5"
+                                            style={{ minHeight: index === 0 ? 140 : 128 }}
+                                            animate={
+                                                prefersReducedMotion
+                                                    ? {}
+                                                    : { y: [0, index % 2 === 0 ? -4 : 4, 0] }
+                                            }
+                                            transition={{
+                                                ...floatTransition,
+                                                delay: index * 0.2,
+                                            }}
+                                        >
+                                            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                                                {row.label}
+                                            </p>
+                                            <p className="mt-4 text-lg font-bold leading-7 text-text">
+                                                {row.value}
+                                            </p>
+                                        </motion.div>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    {/* RIGHT */}
-                    <div className="col-span-12 lg:col-span-4">
-
-                        {/* PANEL BACKGROUND */}
-                        <div className="relative h-full rounded-3xl p-4 bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl">
-
-                            {/* glow */}
-                            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-500/10 to-pink-500/10 blur-xl"></div>
-
-                            <div className="relative grid grid-rows-2 gap-6 h-full">
-
-                                {/* CARD 1 */}
-                                <div className="rounded-2xl bg-white/5 p-8 lg:p-10 border border-white/10 flex flex-col justify-between hover:bg-white/10 hover:-translate-y-1 transition duration-300">
-
-                                    <div className="text-pink-400 text-4xl">💬</div>
-
+                            <div className="app-panel-muted rounded-[28px] p-5">
+                                <div className="flex items-center justify-between gap-4">
                                     <div>
-                                        <h3 className="text-2xl font-semibold">Natural Flow</h3>
-                                        <p className="text-gray-400 text-sm mt-2">
-                                            Conversations that feel like real consultation.
+                                        <p className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                                            Design note
+                                        </p>
+                                        <p className="mt-2 max-w-md text-sm leading-7 text-text-muted">
+                                            The interface avoids loud glow and keeps every primary action within a clear, low-noise frame.
                                         </p>
                                     </div>
+                                    <motion.div
+                                        className="hidden h-16 w-16 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-accent sm:flex"
+                                        animate={prefersReducedMotion ? {} : { rotate: [0, 8, 0, -8, 0], scale: [1, 1.04, 1] }}
+                                        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+                                    >
+                                        <Sparkles size={22} />
+                                    </motion.div>
                                 </div>
-
-                                {/* CARD 2 */}
-                                <div className="rounded-2xl p-8 lg:p-10 flex flex-col justify-between bg-gradient-to-br from-blue-500/80 to-indigo-600/80 border border-white/10 shadow-xl hover:scale-[1.03] transition duration-300">
-
-                                    <h2 className="text-6xl font-bold">99%</h2>
-                                    <p className="text-white/80 text-sm">
-                                        Faster than traditional structural modeling.
-                                    </p>
-                                </div>
-
                             </div>
                         </div>
                     </div>
-
-                </div>
+                </motion.div>
             </div>
         </section>
     );

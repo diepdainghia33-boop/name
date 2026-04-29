@@ -3,37 +3,37 @@ import { ArrowUpRight } from "lucide-react";
 
 export default function BlueprintCard({ title, onClick, delay = 0 }) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 30 }}
+        <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay, type: "spring", stiffness: 90 }}
             onClick={onClick}
-            whileHover={{ y: -8, scale: 1.02 }}
-            className="relative rounded-2xl overflow-hidden h-[200px] cursor-pointer group shadow-[0_8px_30px_rgb(0,0,0,0.5)] border border-white/5 bg-[#111]"
+            whileHover={{ y: -5, scale: 1.01 }}
+            className="group relative h-[200px] overflow-hidden rounded-[28px] border border-border/70 bg-surface text-left shadow-[0_18px_40px_rgba(0,0,0,0.24)]"
         >
-            <img
-                src="https://images.unsplash.com/photo-1677442136019-21780ecad995"
-                alt={title}
-                className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-70 group-hover:scale-110 transition-all duration-700 ease-in-out mix-blend-luminosity"
-            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_36%),linear-gradient(180deg,transparent,rgba(0,0,0,0.28))]" />
 
-            {/* Grandient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
+            <div className="relative flex h-full flex-col justify-between p-5">
+                <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted">
+                        Blueprint
+                    </span>
+                    <div className="rounded-full border border-border/70 bg-background-elevated p-2 text-text-muted transition-colors group-hover:border-accent/40 group-hover:text-accent">
+                        <ArrowUpRight size={15} />
+                    </div>
+                </div>
 
-            {/* Ambient hover glow */}
-            <div className="absolute inset-0 bg-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
-
-            <div className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                <ArrowUpRight size={16} className="text-white" />
+                <div>
+                    <div className="mb-3 h-1 w-12 rounded-full bg-accent transition-transform group-hover:scale-x-125" />
+                    <h3 className="text-xl font-black tracking-tight text-text transition-colors group-hover:text-accent">
+                        {title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-7 text-text-muted">
+                        Click to load schematics
+                    </p>
+                </div>
             </div>
-
-            <div className="absolute bottom-0 left-0 p-6 w-full">
-                <div className="w-8 h-1 bg-gradient-to-r from-cyan-400 to-blue-500 mb-3 rounded-full transform origin-left group-hover:scale-x-150 transition-transform duration-300" />
-                <h3 className="text-xl font-bold text-white group-hover:text-cyan-200 transition-colors">{title}</h3>
-                <p className="text-sm text-gray-400 mt-1 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300 delay-75">
-                    Click to load schematics
-                </p>
-            </div>
-        </motion.div>
+        </motion.button>
     );
 }

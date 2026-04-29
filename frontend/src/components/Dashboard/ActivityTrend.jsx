@@ -2,15 +2,17 @@ import { motion } from "framer-motion";
 import { Activity, Clock } from "lucide-react";
 
 export default function ActivityTrend({ data = [] }) {
-    if (!data || data.length === 0) return (
-        <div className="h-48 flex items-center justify-center bg-white/5 rounded-[28px] border border-dashed border-white/10 text-slate-500 text-xs uppercase tracking-widest">
-            Syncing activity logs...
-        </div>
-    );
+    if (!data || data.length === 0) {
+        return (
+            <div className="flex h-48 items-center justify-center rounded-[28px] border border-dashed border-border/70 bg-surface text-xs font-black uppercase tracking-[0.24em] text-muted">
+                Syncing activity logs...
+            </div>
+        );
+    }
 
-    const counts = data.map(t => t.count);
-    const labels = data.map(t => t.day);
-    
+    const counts = data.map((t) => t.count);
+    const labels = data.map((t) => t.day);
+
     const width = 600;
     const height = 120;
     const maxVal = Math.max(...counts, 5);
@@ -19,42 +21,47 @@ export default function ActivityTrend({ data = [] }) {
 
     const points = counts.map((d, i) => ({
         x: (i / (counts.length - 1)) * width,
-        y: height - d * scaleY - offsetY
+        y: height - d * scaleY - offsetY,
     }));
 
     const linePath = `
         M ${points[0].x} ${points[0].y}
-        ${points.slice(1).map((p, i) => {
-            const prev = points[i];
-            const cx = (prev.x + p.x) / 2;
-            return `C ${cx} ${prev.y}, ${cx} ${p.y}, ${p.x} ${p.y}`;
-        }).join(" ")}
+        ${points
+            .slice(1)
+            .map((p, i) => {
+                const prev = points[i];
+                const cx = (prev.x + p.x) / 2;
+                return `C ${cx} ${prev.y}, ${cx} ${p.y}, ${p.x} ${p.y}`;
+            })
+            .join(" ")}
     `;
 
     return (
-        <div className="group relative overflow-hidden rounded-[24px] border border-white/10 bg-[#0e0e0e] p-4 shadow-xl">
+        <div className="group relative overflow-hidden rounded-[28px] border border-border/70 bg-surface p-5 shadow-[0_16px_40px_rgba(0,0,0,0.24)]">
             <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Activity size={16} className="text-amber-400" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Event Intensity</span>
+                    <Activity size={16} className="text-accent" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.24em] text-muted">
+                        Event intensity
+                    </span>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                    <Clock size={10} /> 7 Cycles
+                <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.24em] text-text-dim">
+                    <Clock size={10} />
+                    7 cycles
                 </div>
             </div>
 
             <div className="h-20 w-full">
-                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full" preserveAspectRatio="none">
                     <motion.path
                         initial={{ pathLength: 0 }}
                         animate={{ pathLength: 1 }}
                         transition={{ duration: 1.5, ease: "easeOut" }}
                         d={linePath}
-                        stroke="#fbbf24"
+                        stroke="oklch(var(--color-accent))"
                         fill="none"
                         strokeWidth="3"
                         strokeLinecap="round"
-                        className="drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]"
                     />
 
                     {points.map((p, i) => (
@@ -66,15 +73,15 @@ export default function ActivityTrend({ data = [] }) {
                             cx={p.x}
                             cy={p.y}
                             r="3"
-                            fill="#fbbf24"
+                            fill="oklch(var(--color-accent))"
                         />
                     ))}
                 </svg>
             </div>
-            
+
             <div className="mt-2 flex justify-between">
                 {labels.map((label, i) => (
-                    <span key={i} className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">
+                    <span key={i} className="text-[8px] font-black uppercase tracking-tighter text-text-dim">
                         {label}
                     </span>
                 ))}

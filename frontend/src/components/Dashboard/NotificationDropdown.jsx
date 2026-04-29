@@ -30,17 +30,22 @@ export default function NotificationDropdown({ isOpen, onClose }) {
     const markAsRead = async (id) => {
         try {
             await api.post(`/notifications/${id}/read`);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+            setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
         } catch (error) {
             console.error("Error marking notification as read:", error);
         }
     };
+
     const getTypeColor = (type) => {
         switch (type) {
-            case "success": return "text-green-400 bg-green-500/10";
-            case "warning": return "text-yellow-400 bg-yellow-500/10";
-            case "error": return "text-red-400 bg-red-500/10";
-            default: return "text-[#85adff] bg-[#85adff]/10";
+            case "success":
+                return "text-success bg-success/10";
+            case "warning":
+                return "text-warning bg-warning/10";
+            case "error":
+                return "text-danger bg-danger/10";
+            default:
+                return "text-accent bg-accent/10";
         }
     };
 
@@ -48,7 +53,6 @@ export default function NotificationDropdown({ isOpen, onClose }) {
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -57,75 +61,78 @@ export default function NotificationDropdown({ isOpen, onClose }) {
                         className="fixed inset-0 z-[60]"
                     />
 
-                    {/* Dropdown Panel */}
                     <motion.div
                         initial={{ opacity: 0, y: -10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
                         transition={springTransition}
-                        className="absolute right-0 top-16 w-96 max-h-[80vh] bg-[#0e0e0e] border border-white/10 rounded-2xl shadow-2xl z-[70] overflow-hidden"
+                        className="absolute right-0 top-16 z-[70] w-96 overflow-hidden rounded-[28px] border border-border/70 bg-background-elevated shadow-[0_30px_70px_rgba(0,0,0,0.45)]"
                     >
-                        {/* Header */}
-                        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
+                        <div className="flex items-center justify-between border-b border-border/70 bg-surface px-4 py-4">
                             <div>
-                                <h3 className="font-bold text-white">Notifications</h3>
-                                <p className="text-xs text-[#adaaaa]">{notifications.filter(n => !n.is_read).length} unread</p>
+                                <h3 className="text-sm font-black tracking-tight text-text">
+                                    Notifications
+                                </h3>
+                                <p className="mt-1 text-xs text-text-muted">
+                                    {notifications.filter((n) => !n.is_read).length} unread
+                                </p>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                                className="rounded-xl border border-border/70 p-2 text-muted transition-colors hover:border-accent/40 hover:text-text"
                             >
-                                <MaterialIcon name="close" className="text-gray-400" />
+                                <MaterialIcon name="close" />
                             </button>
                         </div>
 
-                        <div className="overflow-y-auto max-h-[60vh] custom-scrollbar p-2">
+                        <div className="custom-scrollbar max-h-[60vh] overflow-y-auto p-2">
                             {loading ? (
-                                <div className="p-8 text-center text-xs text-slate-500 uppercase tracking-widest font-black">Syncing...</div>
+                                <div className="p-8 text-center text-xs font-black uppercase tracking-[0.24em] text-muted">
+                                    Syncing...
+                                </div>
                             ) : notifications.length === 0 ? (
-                                <div className="p-8 text-center text-xs text-slate-500 uppercase tracking-widest font-black">No new alerts</div>
+                                <div className="p-8 text-center text-xs font-black uppercase tracking-[0.24em] text-muted">
+                                    No new alerts
+                                </div>
                             ) : (
                                 notifications.map((notif, index) => (
-                                    <motion.div
+                                    <motion.button
                                         key={notif.id}
-                                        initial={{ opacity: 0, x: 20 }}
+                                        type="button"
+                                        initial={{ opacity: 0, x: 16 }}
                                         animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: index * 0.05 }}
+                                        transition={{ delay: index * 0.04 }}
                                         onClick={() => markAsRead(notif.id)}
-                                        className="p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-all group mb-2 border border-transparent hover:border-white/5"
+                                        className="mb-2 flex w-full items-start gap-3 rounded-[22px] border border-transparent px-3 py-3 text-left transition-colors hover:border-border/70 hover:bg-surface"
                                     >
-                                        <div className="flex items-start gap-3">
-                                            {/* Icon */}
-                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${getTypeColor(notif.type)}`}>
-                                                <MaterialIcon name={notif.icon} className="text-sm" />
-                                            </div>
-
-                                            {/* Content */}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <h4 className={`font-bold text-sm ${notif.is_read ? 'text-slate-500' : 'text-white group-hover:text-[#85adff]'} transition-colors`}>
-                                                        {notif.title}
-                                                    </h4>
-                                                    <span className="text-[10px] text-[#adaaaa] shrink-0">{notif.time}</span>
-                                                </div>
-                                                <p className={`text-xs mt-1 leading-relaxed line-clamp-2 ${notif.is_read ? 'text-slate-600' : 'text-[#adaaaa]'}`}>
-                                                    {notif.message}
-                                                </p>
-                                            </div>
-
-                                            {/* Unread Indicator */}
-                                            {!notif.is_read && <div className="w-2 h-2 rounded-full bg-[#fbabff] mt-2 shrink-0 shadow-[0_0_8px_rgba(251,171,255,0.8)]" />}
+                                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-transparent ${getTypeColor(notif.type)}`}>
+                                            <MaterialIcon name={notif.icon} className="text-inherit" />
                                         </div>
-                                    </motion.div>
+
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <h4 className={`text-sm font-bold tracking-tight ${notif.is_read ? "text-text-muted" : "text-text"}`}>
+                                                    {notif.title}
+                                                </h4>
+                                                <span className="shrink-0 text-[10px] text-text-dim">
+                                                    {notif.time}
+                                                </span>
+                                            </div>
+                                            <p className={`mt-1 line-clamp-2 text-xs leading-6 ${notif.is_read ? "text-text-dim" : "text-text-muted"}`}>
+                                                {notif.message}
+                                            </p>
+                                        </div>
+
+                                        {!notif.is_read && <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-accent" />}
+                                    </motion.button>
                                 ))
                             )}
                         </div>
 
-                        {/* Footer */}
-                        <div className="p-3 border-t border-white/5 bg-black/20">
-                            <button className="w-full py-2 text-xs font-['Space_Grotesk'] uppercase tracking-wider text-[#adaaaa] hover:text-white transition-colors flex items-center justify-center gap-2">
-                                View All Notifications
-                                <MaterialIcon name="arrow_forward" className="text-xs" />
+                        <div className="border-t border-border/70 bg-surface px-4 py-3">
+                            <button className="flex w-full items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-muted transition-colors hover:text-text">
+                                View all notifications
+                                <MaterialIcon name="arrow_forward" className="text-inherit" />
                             </button>
                         </div>
                     </motion.div>

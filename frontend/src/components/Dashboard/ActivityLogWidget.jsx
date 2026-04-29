@@ -9,11 +9,11 @@ export default function ActivityLogWidget({ logs }) {
         }
     }, [logs]);
 
-    const getLogColor = (log) => {
-        if (log.type === "success") return "bg-green-500";
-        if (log.type === "warning") return "bg-yellow-500";
-        if (log.type === "error") return "bg-red-500";
-        return "bg-[#1a1919]";
+    const getLogTone = (log) => {
+        if (log.type === "success") return "bg-success";
+        if (log.type === "warning") return "bg-warning";
+        if (log.type === "error") return "bg-danger";
+        return "bg-accent";
     };
 
     const getLogLabel = (log) => {
@@ -26,28 +26,30 @@ export default function ActivityLogWidget({ logs }) {
     };
 
     return (
-        <div className="bg-white/[0.02] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.05] shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden flex flex-col h-80">
-            <h3 className="font-['Space_Grotesk'] text-[10px] uppercase tracking-[0.3em] font-bold text-[#adaaaa] mb-6">
+        <div className="flex h-80 flex-col overflow-hidden rounded-[28px] border border-border/70 bg-surface p-6 shadow-[0_18px_40px_rgba(0,0,0,0.24)]">
+            <h3 className="mb-6 text-[10px] font-black uppercase tracking-[0.3em] text-muted">
                 Activity Log
             </h3>
-            <div ref={logRef} className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar">
+
+            <div ref={logRef} className="custom-scrollbar flex-1 space-y-5 overflow-y-auto pr-2">
                 {logs.length === 0 ? (
-                    <div className="text-[#adaaaa] text-xs">No recent activity...</div>
+                    <div className="text-xs text-text-muted">No recent activity...</div>
                 ) : (
                     logs.map((log, i) => (
-                        <div key={log.id || i} className="relative pl-6 border-l border-white/10">
-                            <div className={`absolute -left-[5px] top-0 w-2 h-2 rounded-full ${getLogColor(log)}`}></div>
-                            <p className="text-[11px] font-bold text-white">{getLogLabel(log)}</p>
-                            <p className="text-[10px] text-[#adaaaa] mt-1 leading-relaxed">{log.message}</p>
-                            <p className="text-[9px] font-['Space_Grotesk'] text-gray-600 mt-2">
+                        <div key={log.id || i} className="relative rounded-[20px] border border-border/70 bg-background px-4 py-3">
+                            <div className={`absolute left-0 top-3 h-10 w-1 rounded-full ${getLogTone(log)}`} />
+                            <p className="text-[11px] font-bold text-text">{getLogLabel(log)}</p>
+                            <p className="mt-1 text-[10px] leading-relaxed text-text-muted">{log.message}</p>
+                            <p className="mt-2 text-[9px] font-black uppercase tracking-[0.24em] text-text-dim">
                                 {log.time}
                             </p>
                         </div>
                     ))
                 )}
             </div>
-            <button className="w-full mt-6 py-2 bg-white/5 rounded-lg text-[10px] font-['Space_Grotesk'] uppercase tracking-widest text-[#adaaaa] hover:text-white transition-all border border-white/5 hover:border-[#85adff]/30">
-                View Full Archive
+
+            <button className="mt-6 rounded-2xl border border-border/70 bg-background px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-muted transition-colors hover:border-accent/40 hover:text-text">
+                View full archive
             </button>
         </div>
     );

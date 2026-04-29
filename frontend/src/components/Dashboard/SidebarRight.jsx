@@ -11,94 +11,104 @@ export default function SidebarRight({ user, logs, addLog }) {
     }, [logs]);
 
     return (
-        <aside className="w-80 h-full bg-black/80 backdrop-blur-xl border-l border-white/5 flex flex-col shrink-0">
-            <div className="p-6 border-b border-white/5">
-                <h3 className="font-['Space_Grotesk'] text-[10px] uppercase tracking-[0.3em] font-bold text-[#adaaaa] mb-6">
-                    System Status
+        <aside className="flex h-full w-80 shrink-0 flex-col border-l border-border/70 bg-background/95 backdrop-blur-xl">
+            <div className="border-b border-border/70 p-6">
+                <h3 className="mb-6 text-[10px] font-black uppercase tracking-[0.3em] text-muted">
+                    System status
                 </h3>
-                <div className="space-y-6">
+
+                <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#85adff] opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#85adff]"></span>
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                             </div>
-                            <span className="text-xs font-bold text-white">Neural Engine</span>
+                            <span className="text-xs font-bold text-text">Neural Engine</span>
                         </div>
-                        <span className="text-[10px] font-['Space_Grotesk'] text-[#85adff]">OPERATIONAL</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.24em] text-success">Operational</span>
                     </div>
+
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-[#8097ff]"></div>
-                            <span className="text-xs font-bold text-white">Vector DB</span>
+                            <div className="h-2 w-2 rounded-full bg-accent" />
+                            <span className="text-xs font-bold text-text">Vector DB</span>
                         </div>
-                        <span className="text-[10px] font-['Space_Grotesk'] text-[#8097ff]">SYNCED</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Synced</span>
                     </div>
-                    {/* Mini Graph */}
-                    <div className="bg-black/20 p-3 rounded-lg border border-white/5">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-['Space_Grotesk'] text-[#adaaaa]">CPU LOAD</span>
-                            <span className="text-[10px] font-['Space_Grotesk'] text-white">42%</span>
+
+                    <div className="rounded-[22px] border border-border/70 bg-surface p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-muted">CPU Load</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-text">42%</span>
                         </div>
-                        <div className="flex gap-[2px] h-8 items-end">
-                            <div className="flex-1 bg-[#1a1919] h-1/2 rounded-sm"></div>
-                            <div className="flex-1 bg-[#1a1919] h-2/3 rounded-sm"></div>
-                            <div className="flex-1 bg-[#85adff] h-3/4 rounded-sm"></div>
-                            <div className="flex-1 bg-[#85adff] h-1/3 rounded-sm"></div>
-                            <div className="flex-1 bg-[#1a1919] h-1/2 rounded-sm"></div>
-                            <div className="flex-1 bg-[#1a1919] h-3/4 rounded-sm"></div>
-                            <div className="flex-1 bg-[#85adff] h-full rounded-sm shadow-[0_0_8px_rgba(133,173,255,0.4)]"></div>
-                            <div className="flex-1 bg-[#1a1919] h-2/3 rounded-sm"></div>
-                            <div className="flex-1 bg-[#1a1919] h-1/2 rounded-sm"></div>
+                        <div className="flex h-8 items-end gap-[2px]">
+                            <div className="h-1/2 flex-1 rounded-sm bg-border/70" />
+                            <div className="h-2/3 flex-1 rounded-sm bg-border/70" />
+                            <div className="h-3/4 flex-1 rounded-sm bg-accent" />
+                            <div className="h-1/3 flex-1 rounded-sm bg-accent" />
+                            <div className="h-1/2 flex-1 rounded-sm bg-border/70" />
+                            <div className="h-3/4 flex-1 rounded-sm bg-border/70" />
+                            <div className="h-full flex-1 rounded-sm bg-accent" />
+                            <div className="h-2/3 flex-1 rounded-sm bg-border/70" />
+                            <div className="h-1/2 flex-1 rounded-sm bg-border/70" />
                         </div>
                     </div>
                 </div>
             </div>
-            <div className="flex-1 flex flex-col p-6 overflow-hidden">
-                <h3 className="font-['Space_Grotesk'] text-[10px] uppercase tracking-[0.3em] font-bold text-[#adaaaa] mb-6">
+
+            <div className="flex flex-1 flex-col overflow-hidden p-6">
+                <h3 className="mb-6 text-[10px] font-black uppercase tracking-[0.3em] text-muted">
                     Activity Log
                 </h3>
-                <div ref={logRef} className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar">
+
+                <div ref={logRef} className="custom-scrollbar flex-1 space-y-4 overflow-y-auto pr-2">
                     {logs.length === 0 ? (
-                        <div className="text-[#adaaaa] text-xs">No recent activity...</div>
+                        <div className="text-xs text-text-muted">No recent activity...</div>
                     ) : (
                         logs.map((log, i) => {
-                            // Determine color based on log content
-                            let color = "bg-[#1a1919]";
-                            if (log.includes("Identity") || log.includes("Settings")) color = "bg-[#85adff]";
-                            if (log.includes("Security")) color = "bg-[#8097ff]";
+                            let tone = "bg-accent";
+                            if (log.includes("Identity") || log.includes("Settings")) tone = "bg-success";
+                            if (log.includes("Security")) tone = "bg-warning";
 
                             return (
-                                <div key={i} className="relative pl-6 border-l border-white/10">
-                                    <div className={`absolute -left-[5px] top-0 w-2 h-2 rounded-full ${color}`}></div>
-                                    <p className="text-[11px] font-bold text-white">
-                                        {log.includes("Identity") ? "Settings Modified" :
-                                         log.includes("Security") ? "Security Scan" :
-                                         log.includes("Key") ? "New Key Issued" :
-                                         log.includes("Login") ? "Account Login" : "System Event"}
+                                <div key={i} className="relative rounded-[20px] border border-border/70 bg-surface px-4 py-3">
+                                    <div className={`absolute left-0 top-3 h-10 w-1 rounded-full ${tone}`} />
+                                    <p className="text-[11px] font-bold text-text">
+                                        {log.includes("Identity")
+                                            ? "Settings Modified"
+                                            : log.includes("Security")
+                                                ? "Security Scan"
+                                                : log.includes("Key")
+                                                    ? "New Key Issued"
+                                                    : log.includes("Login")
+                                                        ? "Account Login"
+                                                        : "System Event"}
                                     </p>
-                                    <p className="text-[10px] text-[#adaaaa] mt-1 leading-relaxed">{log}</p>
-                                    <p className="text-[9px] font-['Space_Grotesk'] text-gray-600 mt-2">
-                                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}
+                                    <p className="mt-1 text-[10px] leading-relaxed text-text-muted">{log}</p>
+                                    <p className="mt-2 text-[9px] font-black uppercase tracking-[0.24em] text-text-dim">
+                                        {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} •{" "}
+                                        {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase()}
                                     </p>
                                 </div>
                             );
                         })
                     )}
                 </div>
+
                 <button
                     onClick={() => addLog("📋 Archive requested")}
-                    className="w-full mt-6 py-2 bg-white/5 rounded-lg text-[10px] font-['Space_Grotesk'] uppercase tracking-widest text-[#adaaaa] hover:text-white transition-all border border-white/5 hover:border-[#85adff]/30"
+                    className="mt-6 rounded-2xl border border-border/70 bg-background px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-muted transition-colors hover:border-accent/40 hover:text-text"
                 >
-                    View Full Archive
+                    View full archive
                 </button>
             </div>
-            {/* Footer Identity */}
-            <div className="p-6 bg-black/20 border-t border-white/5">
-                <div className="flex items-center gap-3 opacity-30">
+
+            <div className="border-t border-border/70 bg-surface p-6">
+                <div className="flex items-center gap-3 text-text-muted opacity-60">
                     <span className="material-symbols-outlined text-lg">lock</span>
-                    <p className="text-[9px] font-['Space_Grotesk'] leading-tight text-[#adaaaa]">
-                        END-TO-END QUANTUM ENCRYPTION ACTIVE
+                    <p className="text-[9px] font-black uppercase leading-tight tracking-[0.24em]">
+                        End-to-end encryption active
                     </p>
                 </div>
             </div>

@@ -23,3 +23,11 @@ export const updateProfileApi = (data) => {
 export const updatePasswordApi = (data) => {
     return api.post("/update-password", data);
 };
+
+export const forgotPasswordApi = (data) => {
+    return api.post("/forgot-password", data);
+};
+
+export const resetPasswordApi = (data) => {
+    return api.post("/reset-password", data);
+};

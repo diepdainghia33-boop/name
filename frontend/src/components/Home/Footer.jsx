@@ -1,80 +1,52 @@
 export default function Footer() {
     return (
-        <footer className="relative bg-black text-white px-6 md:px-12 pt-20 pb-10 border-t border-white/10">
-
-            {/* ===== CONTAINER ===== */}
-            <div className="max-w-6xl mx-auto">
-
-                {/* ===== TOP ===== */}
-                <div className="grid md:grid-cols-2 gap-16 mb-16">
-
-                    {/* LEFT */}
+        <footer className="px-6 pb-12 pt-8 sm:px-8">
+            <div className="mx-auto max-w-7xl border-t border-border/70 pt-8">
+                <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
                     <div>
-                        <h3 className="text-xl font-semibold text-blue-400">
+                        <p className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
                             Architect AI
+                        </p>
+                        <h3 className="mt-3 text-2xl font-black tracking-tight text-text">
+                            An AI platform that keeps the screen quiet and the work visible.
                         </h3>
-
-                        <p className="text-gray-300 mt-4 max-w-sm text-sm leading-relaxed">
-                            Building the future of intelligent design systems.
-                            Empowering creators with next-gen AI tools.
+                        <p className="mt-4 max-w-xl text-sm leading-7 text-text-muted">
+                            Command center UI for chat, dashboards, and settings without the generic neon treatment.
                         </p>
                     </div>
 
-                    {/* RIGHT */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-10 text-sm">
-
-                        <div>
-                            <h4 className="text-white mb-4">Product</h4>
-                            <ul className="space-y-2 text-gray-400">
-                                <li className="hover:text-white cursor-pointer">Features</li>
-                                <li className="hover:text-white cursor-pointer">Pricing</li>
-                                <li className="hover:text-white cursor-pointer">API</li>
+                    <div className="grid gap-6 sm:grid-cols-2">
+                        <div className="app-panel rounded-[28px] p-5">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                                Product
+                            </h4>
+                            <ul className="mt-4 space-y-3 text-sm text-text-muted">
+                                <li>Workspace</li>
+                                <li>Analytics</li>
+                                <li>Settings</li>
                             </ul>
                         </div>
-
-                        <div>
-                            <h4 className="text-white mb-4">Company</h4>
-                            <ul className="space-y-2 text-gray-400">
-                                <li className="hover:text-white cursor-pointer">About</li>
-                                <li className="hover:text-white cursor-pointer">Careers</li>
-                                <li className="hover:text-white cursor-pointer">Blog</li>
+                        <div className="app-panel rounded-[28px] p-5">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                                Support
+                            </h4>
+                            <ul className="mt-4 space-y-3 text-sm text-text-muted">
+                                <li>Docs</li>
+                                <li>Security</li>
+                                <li>Contact</li>
                             </ul>
                         </div>
-
-                        <div>
-                            <h4 className="text-white mb-4">Resources</h4>
-                            <ul className="space-y-2 text-gray-400">
-                                <li className="hover:text-white cursor-pointer">Docs</li>
-                                <li className="hover:text-white cursor-pointer">Guides</li>
-                                <li className="hover:text-white cursor-pointer">Support</li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h4 className="text-white mb-4">Legal</h4>
-                            <ul className="space-y-2 text-gray-400">
-                                <li className="hover:text-white cursor-pointer">Privacy</li>
-                                <li className="hover:text-white cursor-pointer">Terms</li>
-                            </ul>
-                        </div>
-
                     </div>
                 </div>
 
-                {/* ===== BOTTOM ===== */}
-                <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
-
-                    <p className="text-gray-400 text-sm">
-                        © 2026 Architect AI. All rights reserved.
-                    </p>
-
-                    <div className="flex gap-6 text-gray-400 text-sm">
-                        <span className="hover:text-white cursor-pointer">Privacy</span>
-                        <span className="hover:text-white cursor-pointer">Terms</span>
-                        <span className="hover:text-white cursor-pointer">API</span>
-                        <span className="hover:text-white cursor-pointer">Support</span>
+                <div className="mt-10 flex flex-col gap-4 border-t border-border/70 pt-6 text-sm text-text-muted md:flex-row md:items-center md:justify-between">
+                    <p>© 2026 Architect AI. All rights reserved.</p>
+                    <div className="flex flex-wrap gap-4">
+                        <span>Privacy</span>
+                        <span>Terms</span>
+                        <span>API</span>
+                        <span>Support</span>
                     </div>
-
                 </div>
             </div>
         </footer>

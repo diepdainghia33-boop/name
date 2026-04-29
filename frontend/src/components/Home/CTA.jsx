@@ -1,47 +1,46 @@
+import { ArrowRight, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+
 export default function CTA() {
     return (
-        <section className="px-6 md:px-16 py-32 bg-black text-white">
+        <section className="px-6 py-20 sm:px-8 lg:py-28">
+            <div className="mx-auto max-w-7xl">
+                <div className="app-panel-strong overflow-hidden rounded-[40px] p-6 sm:p-10 lg:p-14">
+                    <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+                        <div>
+                            <span className="app-chip">
+                                <Sparkles size={12} className="text-accent" />
+                                Ready when you are
+                            </span>
+                            <h2 className="mt-6 text-4xl font-black leading-[0.95] tracking-tight text-text sm:text-5xl lg:text-6xl">
+                                Start with a workspace that already feels organized.
+                            </h2>
+                            <p className="mt-6 max-w-2xl text-base leading-8 text-muted sm:text-lg">
+                                The new interface reduces visual noise, keeps the primary actions close, and makes
+                                every screen read as one system instead of a stack of disconnected panels.
+                            </p>
+                        </div>
 
-            <div className="relative max-w-6xl mx-auto rounded-[48px] overflow-hidden border border-white/10">
-
-                {/* BACKGROUND */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#111] to-[#1a1a1a]"></div>
-
-                {/* glow */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(59,130,246,0.3),transparent_40%)]"></div>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(168,85,247,0.3),transparent_40%)]"></div>
-
-                {/* CONTENT */}
-                <div className="relative z-10 text-center px-8 py-24 md:py-32">
-
-                    {/* TITLE */}
-                    <h2 className="text-5xl md:text-7xl font-bold leading-tight">
-                        Start building <br />
-                        <span className="bg-gradient-to-r from-white to-gray-400 text-transparent bg-clip-text">
-                            with intelligence.
-                        </span>
-                    </h2>
-
-                    {/* DESC */}
-                    <p className="mt-8 text-gray-400 max-w-3xl mx-auto text-xl leading-relaxed">
-                        Join 50,000+ architects and designers shaping the next
-                        generation of space and software.
-                    </p>
-
-                    {/* BUTTONS */}
-                    <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6">
-
-                        {/* PRIMARY */}
-                        <button className="px-10 py-5 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-lg font-medium shadow-xl shadow-blue-500/30 transition duration-300 hover:scale-105">
-                            Try it Now
-                        </button>
-
-                        {/* SECONDARY */}
-                        <button className="px-10 py-5 rounded-full border border-white/20 text-white text-lg hover:bg-white/10 transition duration-300">
-                            Book a Demo
-                        </button>
+                        <div className="grid gap-4">
+                            <div className="app-panel rounded-[28px] p-5">
+                                <p className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                                    Best for
+                                </p>
+                                <p className="mt-3 text-lg font-bold tracking-tight text-text">
+                                    Long AI sessions, dashboard review, and settings changes without friction.
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-3 sm:flex-row">
+                                <Link to="/login" className="app-button-primary flex-1">
+                                    Open workspace
+                                    <ArrowRight size={14} />
+                                </Link>
+                                <a href="#features" className="app-button-secondary flex-1">
+                                    Review design
+                                </a>
+                            </div>
+                        </div>
                     </div>
-
                 </div>
             </div>
         </section>

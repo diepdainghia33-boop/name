@@ -11,6 +11,8 @@ Route::get('/test', function () {
 
 Route::post('/login', 'App\Http\Controllers\AuthController@login');
 Route::post('/register', 'App\Http\Controllers\AuthController@register');
+Route::post('/forgot-password', 'App\Http\Controllers\AuthController@sendPasswordResetLink');
+Route::post('/reset-password', 'App\Http\Controllers\AuthController@resetPassword');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', 'App\Http\Controllers\AuthController@logout');
@@ -27,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Chat Routes
     Route::get('/conversations', 'App\Http\Controllers\ChatController@getConversations');
     Route::get('/conversations/{id}/messages', 'App\Http\Controllers\ChatController@getMessages');
+    Route::patch('/conversations/{id}', 'App\Http\Controllers\ChatController@updateConversation');
     Route::delete('/conversations/{id}', 'App\Http\Controllers\ChatController@deleteConversation');
     Route::post('/messages/send', 'App\Http\Controllers\ChatController@sendMessage');
     Route::post('/messages/{id}/feedback', 'App\Http\Controllers\ChatController@submitFeedback');

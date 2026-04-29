@@ -1,14 +1,95 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    Cpu, MessageSquare, History, Plus, Trash2, Search, MoreVertical,
-    Pin, Archive, Edit3, Download, Copy, ChevronRight, Star, Lock, AlertCircle, X,
-    FileCode, Settings, HelpCircle, Keyboard, Moon, Sun, ExternalLink, Sparkles,
-    Image, Grid
+    AlertCircle,
+    Archive,
+    Copy,
+    Cpu,
+    Download,
+    Edit3,
+    FileCode,
+    Grid,
+    History,
+    Image,
+    Lock,
+    MessageSquare,
+    MoreVertical,
+    Pin,
+    Plus,
+    Search,
+    Sparkles,
+    Trash2,
+    X,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+
+function sortByDate(a, b) {
+    const dateA = new Date(a.updated_at || a.created_at || 0);
+    const dateB = new Date(b.updated_at || b.created_at || 0);
+    return dateB - dateA;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now - date;
+    const days = Math.floor(diff / 86400000);
+
+    if (days === 0) return "Today";
+    if (days === 1) return "Yesterday";
+    if (days < 7) return `${days} days ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function SectionLabel({ label }) {
+    return (
+        <div className="flex items-center gap-2 mb-3 pt-2 first:pt-0">
+            <div className="h-px flex-1 bg-border/70" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-text-dim">{label}</span>
+            <div className="h-px flex-1 bg-border/70" />
+        </div>
+    );
+}
+
+function ProjectCodexButton() {
+    return (
+        <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="group flex items-center justify-center gap-2 rounded-2xl border border-border/70 bg-surface px-3 py-2.5 text-xs font-semibold text-accent transition-all duration-200 hover:border-border-strong hover:text-accent-strong"
+        >
+            <Sparkles size={14} className="relative z-10" />
+            <span className="relative z-10">Codex</span>
+        </motion.button>
+    );
+}
+
+function MoreMenu() {
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -6 }}
+            className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-border/70 bg-background-elevated/95 shadow-2xl backdrop-blur-md"
+        >
+            <button className="flex w-full items-center gap-3 px-4 py-3 text-sm text-text-muted transition hover:bg-surface-strong hover:text-text">
+                <Image size={18} />
+                Images
+            </button>
+            <button className="flex w-full items-center gap-3 px-4 py-3 text-sm text-text-muted transition hover:bg-surface-strong hover:text-text">
+                <Cpu size={18} />
+                Deep research
+            </button>
+            <button className="flex w-full items-center gap-3 px-4 py-3 text-sm text-text-muted transition hover:bg-surface-strong hover:text-text">
+                <Grid size={18} />
+                Apps
+            </button>
+        </motion.div>
+    );
+}
 
 export default function RightPanel({
-    conversations,
+    conversations = [],
     onSelectConversation,
     onNewConversation,
     onDeleteConversation,
@@ -20,52 +101,43 @@ export default function RightPanel({
     onClose,
 }) {
     const [searchQuery, setSearchQuery] = useState("");
-    const [deletingId, setDeletingId] = useState(null);
-    const [contextMenuId, setContextMenuId] = useState(null);
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-    const [pinnedIds, setPinnedIds] = useState(new Set());
-    const [archivedIds, setArchivedIds] = useState(new Set());
     const [showArchived, setShowArchived] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [conversationToDelete, setConversationToDelete] = useState(null);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(true);
-    const contextMenuRef = useRef(null);
-    const moreMenuRef = useRef(null);
-    const moreButtonRef = useRef(null);
+    const [contextMenu, setContextMenu] = useState(null);
+    const panelRef = useRef(null);
 
-    // Filter conversations
+    useEffect(() => {
+        const handlePointerDown = (event) => {
+            if (panelRef.current && !panelRef.current.contains(event.target)) {
+                setContextMenu(null);
+                setShowMoreMenu(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handlePointerDown);
+        return () => document.removeEventListener("mousedown", handlePointerDown);
+    }, []);
+
     const filteredConversations = useMemo(() => {
-        let filtered = conversations.filter(c => {
-            const isArchived = archivedIds.has(c.id);
-            if (!showArchived && isArchived) return false;
-            return true;
+        let filtered = conversations.filter((conversation) => {
+            return showArchived || !conversation.is_archived;
         });
 
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
-            filtered = filtered.filter(c =>
-                (c.title || "").toLowerCase().includes(q) ||
-                (c.preview || "").toLowerCase().includes(q)
+            filtered = filtered.filter((conversation) =>
+                (conversation.title || "").toLowerCase().includes(q) ||
+                (conversation.preview || "").toLowerCase().includes(q)
             );
         }
 
-        const pinned = filtered.filter(c => pinnedIds.has(c.id));
-        const unpinned = filtered.filter(c => !pinnedIds.has(c.id));
+        const pinned = filtered.filter((conversation) => conversation.is_pinned).sort(sortByDate);
+        const unpinned = filtered.filter((conversation) => !conversation.is_pinned).sort(sortByDate);
+        return { pinned, unpinned };
+    }, [conversations, searchQuery, showArchived]);
 
-        const sortByDate = (a, b) => {
-            const dateA = new Date(a.updated_at || a.created_at || 0);
-            const dateB = new Date(b.updated_at || b.created_at || 0);
-            return dateB - dateA;
-        };
-
-        return {
-            pinned: pinned.sort(sortByDate),
-            unpinned: unpinned.sort(sortByDate)
-        };
-    }, [conversations, searchQuery, pinnedIds, archivedIds, showArchived]);
-
-    // Group unpinned conversations by date
     const groupedUnpinned = useMemo(() => {
         const groups = { today: [], yesterday: [], thisWeek: [], older: [] };
         const now = new Date();
@@ -73,88 +145,49 @@ export default function RightPanel({
         const yesterday = today - 86400000;
         const weekAgo = today - 7 * 86400000;
 
-        filteredConversations.unpinned.forEach(conv => {
-            const date = new Date(conv.updated_at || conv.created_at || 0).getTime();
-            if (date >= today) {
-                groups.today.push(conv);
-            } else if (date >= yesterday) {
-                groups.yesterday.push(conv);
-            } else if (date >= weekAgo) {
-                groups.thisWeek.push(conv);
-            } else {
-                groups.older.push(conv);
-            }
+        filteredConversations.unpinned.forEach((conversation) => {
+            const date = new Date(conversation.updated_at || conversation.created_at || 0).getTime();
+            if (date >= today) groups.today.push(conversation);
+            else if (date >= yesterday) groups.yesterday.push(conversation);
+            else if (date >= weekAgo) groups.thisWeek.push(conversation);
+            else groups.older.push(conversation);
         });
 
         return groups;
     }, [filteredConversations.unpinned]);
 
-    // Handlers
-    const handleContextMenu = (e, convId) => {
-        e.preventDefault();
-        setContextMenuId(convId);
-        setMenuPosition({ top: e.clientY, left: e.clientX });
-    };
-
-    const closeContextMenu = () => {
-        setContextMenuId(null);
-    };
-
-    useEffect(() => {
-        const handleClickOutside = () => closeContextMenu();
-        document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
-    }, []);
-
-    const handleMoreToggle = () => {
-        setShowMoreMenu(!showMoreMenu);
-    };
-
-    const closeMoreMenu = () => {
+    const openContextMenu = (event, conv) => {
+        event.stopPropagation();
         setShowMoreMenu(false);
-    };
-
-    useEffect(() => {
-        const handleClickOutsideMore = (e) => {
-            if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
-                closeMoreMenu();
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutsideMore);
-        return () => document.removeEventListener('mousedown', handleClickOutsideMore);
-    }, []);
-
-    const handlePin = (id) => {
-        setPinnedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
+        setContextMenu({
+            id: conv.id,
+            title: conv.title || "New conversation",
+            top: event.clientY,
+            left: event.clientX,
         });
-        onPinConversation?.(id, !pinnedIds.has(id));
-        closeContextMenu();
     };
 
-    const handleArchive = (id) => {
-        setArchivedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-        onArchiveConversation?.(id, !archivedIds.has(id));
-        closeContextMenu();
+    const closeContextMenu = () => setContextMenu(null);
+
+    const togglePin = (id) => {
+        const conversation = conversations.find((item) => item.id === id);
+        onPinConversation?.(id, !conversation?.is_pinned);
     };
 
-    const handleRename = (id, newTitle) => {
-        if (newTitle && newTitle.trim()) {
-            onRenameConversation?.(id, newTitle.trim());
+    const toggleArchive = (id) => {
+        const conversation = conversations.find((item) => item.id === id);
+        onArchiveConversation?.(id, !conversation?.is_archived);
+    };
+
+    const handleRename = (conv) => {
+        const nextTitle = prompt("Rename conversation:", conv.title || "");
+        if (nextTitle && nextTitle.trim()) {
+            onRenameConversation?.(conv.id, nextTitle.trim());
         }
         closeContextMenu();
     };
 
-    const handleDeleteClick = (e, id) => {
-        e.stopPropagation();
+    const handleDeleteClick = (id) => {
         setConversationToDelete(id);
         setShowDeleteConfirm(true);
         closeContextMenu();
@@ -163,8 +196,8 @@ export default function RightPanel({
     const confirmDelete = () => {
         if (conversationToDelete) {
             onDeleteConversation?.(conversationToDelete);
-            setConversationToDelete(null);
         }
+        setConversationToDelete(null);
         setShowDeleteConfirm(false);
     };
 
@@ -173,416 +206,165 @@ export default function RightPanel({
         setShowDeleteConfirm(false);
     };
 
-    // Stats for each conversation
-    const getConversationStats = (conv) => {
-        const msgCount = conv.message_count || Math.floor(Math.random() * 20) + 1;
-        const tokenCount = conv.token_count || Math.floor(Math.random() * 2000) + 100;
-        return { msgCount, tokenCount };
-    };
+    const totalMsgs = conversations.reduce((sum, conversation) => sum + Number(conversation.message_count || 0), 0);
+    const totalTokens = conversations.reduce((sum, conversation) => sum + Number(conversation.token_count || 0), 0);
+    const activeToday = filteredConversations.pinned.length + groupedUnpinned.today.length;
+    const archivedCount = conversations.filter((conversation) => conversation.is_archived).length;
+    const contextConversation = contextMenu
+        ? conversations.find((conversation) => conversation.id === contextMenu.id)
+        : null;
 
-    // Format date
-    const formatDate = (dateStr) => {
-        if (!dateStr) return "";
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diff = now - date;
-        const days = Math.floor(diff / 86400000);
+    const containerClasses = isMobile
+        ? "fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col bg-background text-text"
+        : "relative z-20 hidden h-screen w-72 flex-col border-l border-border/70 bg-background p-5 text-text lg:flex";
 
-        if (days === 0) return "Today";
-        if (days === 1) return "Yesterday";
-        if (days < 7) return `${days} days ago`;
-        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    };
-
-    // Render single conversation card
-    const ConversationCard = ({ conv, showGroupLabel = false }) => {
+    const ConversationCard = ({ conv }) => {
         const isActive = activeId === conv.id;
-        const isPinned = pinnedIds.has(conv.id);
-        const stats = getConversationStats(conv);
+        const isPinned = Boolean(conv.is_pinned);
+        const msgCount = Number(conv.message_count || 0);
+        const tokenCount = Number(conv.token_count || 0);
 
         return (
-            <motion.div
+            <motion.button
+                type="button"
                 layout
                 initial={{ opacity: 0, x: isMobile ? 20 : 16 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: isMobile ? -20 : -16 }}
                 whileHover={{ scale: 1.01, x: 4 }}
                 onClick={() => onSelectConversation?.(conv.id)}
-                className={`group relative p-3 rounded-2xl cursor-pointer transition-all duration-200 border flex items-start gap-3 ${isActive
-                    ? "bg-blue-600/10 border-blue-500/30 shadow-[inset_0_0_16px_rgba(59,130,246,0.08)]"
-                    : "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10"
+                onContextMenu={(event) => openContextMenu(event, conv)}
+                className={`group relative flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${isActive
+                    ? "border-accent/20 bg-accent/10 shadow-[inset_0_0_16px_rgba(0,0,0,0.12)]"
+                    : "border-border/70 bg-surface hover:border-border-strong hover:bg-background-elevated"
                     }`}
-                onContextMenu={(e) => handleContextMenu(e, conv.id)}
             >
-                {/* Pin indicator */}
                 {isPinned && (
-                    <div className="absolute -top-1 -left-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
-                        <Pin size={10} className="text-black fill-black" />
+                    <div className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-warning shadow-lg">
+                        <Pin size={10} className="text-background fill-background" />
                     </div>
                 )}
 
-                {/* Icon */}
-                <div className={`mt-0.5 p-1.5 rounded-lg flex-shrink-0 ${isActive ? "bg-blue-600/20 text-blue-400" : "bg-white/5 text-gray-500 group-hover:text-blue-400"
-                    }`}>
+                <div className={`mt-0.5 flex-shrink-0 rounded-lg p-1.5 ${isActive ? "bg-accent/15 text-accent" : "bg-surface text-text-dim group-hover:text-accent"}`}>
                     <MessageSquare size={14} />
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                        <p className={`text-[12px] font-bold truncate leading-snug flex-1 ${isActive ? "text-white" : "text-gray-300"
-                            }`}>
+                        <p className={`min-w-0 flex-1 truncate text-[12px] font-bold leading-snug ${isActive ? "text-text" : "text-text-muted"}`}>
                             {conv.title || "New conversation"}
                         </p>
-                        {/* Context menu button */}
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setContextMenuId(conv.id);
-                                setMenuPosition({ top: e.clientY, left: e.clientX });
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded transition-colors hover:bg-white/10 text-gray-500 hover:text-white"
+                            type="button"
+                            onClick={(event) => openContextMenu(event, conv)}
+                            className="rounded p-1 text-text-dim opacity-0 transition hover:bg-surface-strong hover:text-text group-hover:opacity-100"
                             aria-label="Conversation options"
                         >
                             <MoreVertical size={14} />
                         </button>
                     </div>
 
-                    {/* Preview snippet */}
                     {conv.preview && (
-                        <p className="text-[10px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                        <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-text-dim">
                             {conv.preview}
                         </p>
                     )}
 
-                    {/* Meta info */}
-                    <div className="flex items-center gap-3 mt-2 text-[9px] font-black uppercase tracking-wider text-gray-600">
+                    <div className="mt-2 flex items-center gap-3 text-[9px] font-black uppercase tracking-wider text-text-dim">
                         <span className="flex items-center gap-1">
                             <History size={9} />
                             {formatDate(conv.updated_at || conv.created_at)}
                         </span>
                         <span>•</span>
-                        <span>{stats.msgCount} msgs</span>
+                        <span>{msgCount} msgs</span>
                         <span>•</span>
-                        <span className="text-indigo-400/60">{stats.tokenCount} tkns</span>
+                        <span className="text-accent/80">{tokenCount} tkns</span>
                     </div>
                 </div>
-            </motion.div>
+            </motion.button>
         );
     };
-
-    // Context Menu
-    const ContextMenu = ({ conv }) => (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            ref={contextMenuRef}
-            className="fixed z-50 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden"
-            style={{ top: menuPosition.top, left: menuPosition.left }}
-        >
-            <div className="p-1.5">
-                <button
-                    onClick={() => handleRename(conv.id, prompt("Rename conversation:", conv.title || ""))}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-white/5 transition-colors"
-                >
-                    <Edit3 size={13} />
-                    Rename
-                </button>
-                <button
-                    onClick={() => handlePin(conv.id)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-white/5 transition-colors"
-                >
-                    <Pin size={13} />
-                    {pinnedIds.has(conv.id) ? "Unpin" : "Pin"}
-                </button>
-                <button
-                    onClick={() => handleArchive(conv.id)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-white/5 transition-colors"
-                >
-                    <Archive size={13} />
-                    {archivedIds.has(conv.id) ? "Unarchive" : "Archive"}
-                </button>
-                <button
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-white/5 transition-colors"
-                >
-                    <Copy size={13} />
-                    Duplicate
-                </button>
-                <button
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-white/5 transition-colors"
-                >
-                    <Download size={13} />
-                    Export
-                </button>
-            </div>
-            <div className="border-t border-white/10 p-1.5">
-                <button
-                    onClick={(e) => handleDeleteClick(e, conv.id)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition-colors"
-                >
-                    <Trash2 size={13} />
-                    Delete
-                </button>
-            </div>
-        </motion.div>
-    );
-
-    // Empty state
-    const EmptyState = ({ message }) => (
-        <div className="flex flex-col items-center justify-center p-8 text-center opacity-60">
-            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
-                <History size={20} className="text-gray-500" />
-            </div>
-            <p className="text-xs font-medium text-gray-400">{message}</p>
-        </div>
-    );
-
-    // Compact Project Codex Button
-    const ProjectCodexButton = () => (
-        <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl bg-gradient-to-br from-blue-600/10 via-purple-600/10 to-pink-600/10 border border-blue-500/20 hover:border-blue-500/40 text-blue-300 hover:text-blue-200 font-semibold text-xs transition-all duration-200 relative overflow-hidden group"
-        >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Sparkles size={14} className="relative z-10" />
-            <span className="relative z-10">Codex</span>
-        </motion.button>
-    );
-
-    const MoreMenu = () => (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -6 }}
-            className="absolute right-0 top-full mt-2 w-56 
-                   bg-[#1f1f1f]/95 backdrop-blur-md
-                   rounded-2xl shadow-2xl border border-white/10 
-                   overflow-hidden z-50"
-        >
-            <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-200 hover:bg-white/5 transition">
-                <Image size={18} />
-                Images
-            </button>
-
-            <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-200 hover:bg-white/5 transition">
-                <Cpu size={18} />
-                Deep research
-            </button>
-
-            <button className="flex items-center gap-3 w-full px-4 py-3 text-sm text-gray-200 hover:bg-white/5 transition">
-                <Grid size={18} />
-                Apps
-            </button>
-        </motion.div>
-    );
-
-    // Stats footer
-    const StatsFooter = () => {
-        const totalMsgs = conversations.reduce((sum, c) => sum + (c.message_count || 0), 0);
-        const totalTokens = conversations.reduce((sum, c) => sum + (c.token_count || 0), 0);
-        const activeToday = filteredConversations.pinned.length + groupedUnpinned.today.length;
-
-        return (
-            <div className="mt-auto pt-4 border-t border-white/5">
-                <div className="bg-gradient-to-br from-white/[0.02] to-transparent border border-white/[0.05] rounded-2xl p-4 space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-gray-500 mb-2">Session Stats</p>
-
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-500">Total Chats</span>
-                        <span className="text-[11px] font-black text-white">{conversations.length}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-500">Today</span>
-                        <span className="text-[11px] font-black text-blue-400">{activeToday}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-500">Pinned</span>
-                        <span className="text-[11px] font-black text-yellow-400">{pinnedIds.size}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-500">Messages</span>
-                        <span className="text-[11px] font-black text-white">{totalMsgs}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-500">Tokens</span>
-                        <span className="text-[11px] font-black text-indigo-400">{totalTokens.toLocaleString()}</span>
-                    </div>
-
-                    {archivedIds.size > 0 && (
-                        <button
-                            onClick={() => setShowArchived(!showArchived)}
-                            className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-[10px] font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all border border-white/5 hover:border-white/10"
-                        >
-                            {showArchived ? <Lock size={12} /> : <AlertCircle size={12} />}
-                            {showArchived ? "Hide" : "Show"} Archived ({archivedIds.size})
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    // Delete Confirm Modal
-    const DeleteConfirmModal = () => (
-        <AnimatePresence>
-            {showDeleteConfirm && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                    onClick={cancelDelete}
-                >
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
-                                <Trash2 size={20} className="text-red-400" />
-                            </div>
-                            <h3 className="text-lg font-bold text-white">Delete Conversation?</h3>
-                        </div>
-                        <p className="text-sm text-gray-400 mb-6">
-                            This action cannot be undone. The conversation and all its data will be permanently removed.
-                        </p>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={cancelDelete}
-                                className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={confirmDelete}
-                                className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium transition-all shadow-lg shadow-red-500/20"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
-
-    // Date section header
-    const DateHeader = ({ label }) => (
-        <div className="flex items-center gap-2 mb-3 pt-2 first:pt-0">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-gray-600">{label}</span>
-            <div className="h-px flex-1 bg-white/10" />
-        </div>
-    );
-
-    // Mobile header
-    const MobileHeader = () => (
-        <div className="lg:hidden flex items-center justify-between p-4 border-b border-white/5 bg-[#0b0b0b]">
-            <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center ring-1 ring-white/10">
-                    <FileCode size={14} className="text-white" />
-                </div>
-                <div>
-                    <h2 className="text-sm font-black uppercase tracking-wider text-white">ChatID</h2>
-                    <p className="text-[9px] text-gray-500">Codex v2.4</p>
-                </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleMoreToggle}
-                    className="p-2 rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-all"
-                    aria-label="More options"
-                >
-                    <MoreVertical size={16} />
-                </motion.button>
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={onClose}
-                    className="p-2 rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-all"
-                    aria-label="Close"
-                >
-                    <X size={16} />
-                </motion.button>
-            </div>
-            <AnimatePresence>
-                {showMoreMenu && <MoreMenu />}
-            </AnimatePresence>
-        </div>
-    );
-
-    // Desktop Header
-    const DesktopHeader = () => (
-        <div className="hidden lg:block mb-5 pb-4 border-b border-white/5">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20 ring-1 ring-white/10">
-                    <FileCode size={20} className="text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <h2 className="text-sm font-black uppercase tracking-wider text-white truncate">
-                        ChatID Codex
-                    </h2>
-                    <p className="text-[9px] text-gray-500">v2.4.0 • Active</p>
-                </div>
-                <ProjectCodexButton />
-            </div>
-        </div>
-    );
-
-    const containerClasses = isMobile
-        ? "fixed inset-y-0 right-0 w-72 max-w-[85vw] bg-[#0e0e0e] flex flex-col z-50"
-        : "w-72 h-screen bg-[#0e0e0e] border-l border-white/5 p-5 text-white hidden lg:flex flex-col relative z-20";
 
     return (
-        <aside className={containerClasses}>
-            {isMobile && <MobileHeader />}
+        <aside ref={panelRef} className={containerClasses}>
+            {isMobile ? (
+                <div className="flex items-center justify-between border-b border-border/70 bg-background-elevated p-4 lg:hidden">
+                    <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-surface">
+                            <FileCode size={14} className="text-accent" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-black uppercase tracking-wider text-text">ChatID</h2>
+                            <p className="text-[9px] text-text-dim">Codex v2.4</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setShowMoreMenu((value) => !value)}
+                            className="rounded-xl border border-border/70 bg-surface p-2 text-text-dim transition-all hover:border-border-strong hover:bg-surface-strong hover:text-text"
+                            aria-label="More options"
+                        >
+                            <MoreVertical size={16} />
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={onClose}
+                            className="rounded-xl border border-border/70 bg-surface p-2 text-text-dim transition-all hover:border-border-strong hover:bg-surface-strong hover:text-text"
+                            aria-label="Close"
+                        >
+                            <X size={16} />
+                        </motion.button>
+                    </div>
+                    <AnimatePresence>{showMoreMenu && <MoreMenu />}</AnimatePresence>
+                </div>
+            ) : (
+                <div className="mb-5 border-b border-border/70 pb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-surface">
+                            <FileCode size={20} className="text-accent" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="truncate text-sm font-black uppercase tracking-wider text-text">
+                                ChatID Codex
+                            </h2>
+                            <p className="text-[9px] text-text-dim">v2.4.0 • Active</p>
+                        </div>
+                        <ProjectCodexButton />
+                    </div>
+                </div>
+            )}
 
-            {/* Desktop Header */}
-            {!isMobile && <DesktopHeader />}
-
-            {/* Main Content */}
-            <div className={`flex-1 overflow-y-auto pr-1 scrollbar-hide space-y-4 ${isMobile ? 'px-0' : ''}`}>
-
-                {/* Search Bar */}
+            <div className={`flex-1 space-y-4 overflow-y-auto pr-1 scrollbar-hide ${isMobile ? "px-0" : ""}`}>
                 <div className="relative group">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors pointer-events-none" />
+                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-dim transition-colors group-focus-within:text-accent" />
                     <input
                         type="text"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(event) => setSearchQuery(event.target.value)}
                         placeholder="Search conversations..."
-                        className={`w-full bg-white/[0.03] border border-white/10 hover:border-blue-500/30 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300 pl-10 pr-10 py-2.5 rounded-2xl text-[12px] font-medium text-gray-200 placeholder-gray-600 outline-none ${isMobile ? 'text-sm' : ''}`}
+                        className={`app-input w-full pl-10 pr-10 py-2.5 text-[12px] font-medium ${isMobile ? "text-sm" : ""}`}
                     />
                     {searchQuery && (
                         <motion.button
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             onClick={() => setSearchQuery("")}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white transition-all"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-surface p-1 text-text-dim transition-all hover:bg-surface-strong hover:text-text"
                         >
                             <X size={12} />
                         </motion.button>
                     )}
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex gap-2">
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.97 }}
                         onClick={onNewConversation}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold text-xs transition-all duration-200 shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/20"
+                        className="app-button-primary flex-1 px-3 py-2.5 text-xs"
                         aria-label="Start new conversation"
                     >
                         <Plus size={14} />
@@ -593,34 +375,30 @@ export default function RightPanel({
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.97 }}
-                            onClick={handleMoreToggle}
-                            className="px-3 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-300 hover:text-white transition-all"
+                            onClick={() => setShowMoreMenu((value) => !value)}
+                            className="rounded-2xl border border-border/70 bg-surface px-3 py-2.5 text-text-muted transition-all hover:border-border-strong hover:bg-surface-strong hover:text-text"
                             aria-label="More options"
                         >
                             <MoreVertical size={18} />
                         </motion.button>
-                        <AnimatePresence>
-                            {showMoreMenu && <MoreMenu />}
-                        </AnimatePresence>
+                        <AnimatePresence>{showMoreMenu && <MoreMenu />}</AnimatePresence>
                     </div>
                 </div>
 
-                {/* Conversations Header */}
-                {(filteredConversations.pinned.length > 0 || Object.values(groupedUnpinned).some(arr => arr.length > 0)) && (
+                {(filteredConversations.pinned.length > 0 || Object.values(groupedUnpinned).some((group) => group.length > 0)) && (
                     <div className="flex items-center justify-between pt-1">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-500">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-text-dim">
                             Conversations
                         </h3>
-                        <span className="text-[9px] text-gray-600 font-medium">{conversations.length} total</span>
+                        <span className="text-[9px] font-medium text-text-dim">{conversations.length} total</span>
                     </div>
                 )}
 
-                {/* Pinned Conversations */}
                 {filteredConversations.pinned.length > 0 && (
                     <div className="space-y-2">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Pin size={12} className="text-yellow-400 fill-yellow-400" />
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-yellow-400/70">
+                        <div className="mb-2 flex items-center gap-2">
+                            <Pin size={12} className="fill-warning text-warning" />
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-warning/70">
                                 Pinned
                             </p>
                         </div>
@@ -632,11 +410,10 @@ export default function RightPanel({
                     </div>
                 )}
 
-                {/* Date-grouped sections */}
                 {Object.entries(groupedUnpinned).map(([group, convs]) => (
                     convs.length > 0 && (
                         <div key={group} className="space-y-2">
-                            <DateHeader
+                            <SectionLabel
                                 label={
                                     group === "today" ? "Today" :
                                         group === "yesterday" ? "Yesterday" :
@@ -652,34 +429,170 @@ export default function RightPanel({
                     )
                 ))}
 
-                {/* Empty state */}
                 {filteredConversations.pinned.length === 0 &&
-                    Object.values(groupedUnpinned).every(arr => arr.length === 0) && (
-                        <EmptyState message={searchQuery ? "No conversations match your search" : "No conversations yet. Start chatting!"} />
+                    Object.values(groupedUnpinned).every((group) => group.length === 0) && (
+                        <div className="flex flex-col items-center justify-center p-8 text-center opacity-60">
+                            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-surface">
+                                <History size={20} className="text-text-dim" />
+                            </div>
+                            <p className="text-xs font-medium text-text-muted">
+                                {searchQuery ? "No conversations match your search" : "No conversations yet. Start chatting!"}
+                            </p>
+                        </div>
                     )}
 
-                {/* Spacer */}
                 <div className="h-4" />
             </div>
 
-            {/* Stats Footer */}
-            {!isMobile && <StatsFooter />}
+            {!isMobile && (
+                <div className="mt-auto pt-4 border-t border-border/70">
+                    <div className="space-y-3 rounded-2xl border border-border/70 bg-surface p-4">
+                        <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-text-dim">
+                            Session Stats
+                        </p>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-text-dim">Total Chats</span>
+                            <span className="text-[11px] font-black text-text">{conversations.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-text-dim">Today</span>
+                            <span className="text-[11px] font-black text-accent">{activeToday}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-text-dim">Pinned</span>
+                            <span className="text-[11px] font-black text-warning">{filteredConversations.pinned.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-text-dim">Messages</span>
+                            <span className="text-[11px] font-black text-text">{totalMsgs}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-text-dim">Tokens</span>
+                            <span className="text-[11px] font-black text-accent">{totalTokens.toLocaleString()}</span>
+                        </div>
 
-            {/* Context Menu */}
-            <AnimatePresence>
-                {contextMenuId && (
-                    <ContextMenu conv={conversations.find(c => c.id === contextMenuId)} />
-                )}
-            </AnimatePresence>
-
-            {/* More Menu (Mobile) */}
-            {isMobile && showMoreMenu && (
-                <div className="fixed inset-0 z-40" onClick={closeMoreMenu}>
-                    <div className="absolute top-16 left-4 right-4">
-                        <MoreMenu />
+                        {archivedCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setShowArchived((value) => !value)}
+                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-border/70 px-3 py-2 text-[10px] font-medium text-text-muted transition-all hover:border-border-strong hover:bg-surface-strong hover:text-text"
+                            >
+                                {showArchived ? <Lock size={12} /> : <AlertCircle size={12} />}
+                                {showArchived ? "Hide" : "Show"} Archived ({archivedCount})
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
+
+            <AnimatePresence>
+                {contextMenu && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        className="fixed z-50 w-52 overflow-hidden rounded-2xl border border-border/70 bg-background-elevated shadow-2xl"
+                        style={{ top: contextMenu.top, left: contextMenu.left }}
+                    >
+                        <div className="p-1.5">
+                            <button
+                                type="button"
+                                onClick={() => handleRename(contextMenu)}
+                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-text-muted transition hover:bg-surface-strong hover:text-text"
+                            >
+                                <Edit3 size={13} />
+                                Rename
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => togglePin(contextMenu.id)}
+                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-text-muted transition hover:bg-surface-strong hover:text-text"
+                            >
+                                <Pin size={13} />
+                                {contextConversation?.is_pinned ? "Unpin" : "Pin"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleArchive(contextMenu.id)}
+                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-text-muted transition hover:bg-surface-strong hover:text-text"
+                            >
+                                <Archive size={13} />
+                                {contextConversation?.is_archived ? "Unarchive" : "Archive"}
+                            </button>
+                            <button
+                                type="button"
+                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-text-muted transition hover:bg-surface-strong hover:text-text"
+                            >
+                                <Copy size={13} />
+                                Duplicate
+                            </button>
+                            <button
+                                type="button"
+                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-text-muted transition hover:bg-surface-strong hover:text-text"
+                            >
+                                <Download size={13} />
+                                Export
+                            </button>
+                        </div>
+                        <div className="border-t border-border/70 p-1.5">
+                            <button
+                                type="button"
+                                onClick={() => handleDeleteClick(contextMenu.id)}
+                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-danger transition hover:bg-danger/10"
+                            >
+                                <Trash2 size={13} />
+                                Delete
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showDeleteConfirm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                        onClick={cancelDelete}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="mx-4 w-full max-w-sm rounded-2xl border border-border/70 bg-background-elevated p-6 shadow-2xl"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <div className="mb-4 flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-danger/20">
+                                    <Trash2 size={20} className="text-danger" />
+                                </div>
+                                <h3 className="text-lg font-bold text-text">Delete Conversation?</h3>
+                            </div>
+                            <p className="mb-6 text-sm text-text-muted">
+                                This action cannot be undone. The conversation and all its data will be permanently removed.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={cancelDelete}
+                                    className="flex-1 rounded-xl border border-border/70 bg-surface px-4 py-2.5 font-medium text-text transition-all hover:border-border-strong hover:bg-surface-strong"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmDelete}
+                                    className="flex-1 rounded-xl bg-danger px-4 py-2.5 font-medium text-white transition-all hover:bg-danger/90"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </aside>
     );
 }

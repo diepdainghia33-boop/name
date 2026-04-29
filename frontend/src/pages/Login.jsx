@@ -2,6 +2,14 @@ import { useState } from "react";
 import { loginApi } from "../api/auth.api";
 import { useNavigate, Link } from "react-router-dom";
 import { getApiErrorMessage } from "../utils/apiError";
+import { ArrowRight, LockKeyhole, Mail, ShieldCheck, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+
+const benefits = [
+    "Keep conversations, analytics, and settings in one place.",
+    "Use a workspace that stays readable during long sessions.",
+    "Get a calmer dark interface without heavy neon glow.",
+];
 
 export default function AuthPage() {
     const [email, setEmail] = useState("");
@@ -17,10 +25,7 @@ export default function AuthPage() {
         setError("");
 
         try {
-            const res = await loginApi({
-                email,
-                password
-            });
+            const res = await loginApi({ email, password });
 
             localStorage.setItem("token", res.data.token);
             localStorage.setItem("user", JSON.stringify(res.data.user));
@@ -28,7 +33,7 @@ export default function AuthPage() {
                 "dashboard_welcome",
                 JSON.stringify({
                     name: res.data.user?.name || email,
-                    message: "Your command center is live. Everything is synced for this session."
+                    message: "Your command center is live. Everything is synced for this session.",
                 })
             );
 
@@ -41,103 +46,144 @@ export default function AuthPage() {
     };
 
     return (
-        <div className="relative bg-[#0e0e0e] text-white min-h-screen flex flex-col overflow-hidden">
-            <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-500/10 blur-[180px] rounded-full"></div>
-            <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-500/10 blur-[180px] rounded-full"></div>
+        <div className="min-h-screen overflow-hidden bg-background text-text">
+            <div className="app-shell absolute inset-0" />
+            <header className="relative z-10 border-b border-border/70 bg-background/70 backdrop-blur-xl">
+                <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 sm:px-8">
+                    <Link to="/" className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-surface">
+                            <Sparkles size={18} className="text-accent" />
+                        </div>
+                        <div className="leading-tight">
+                            <div className="font-display text-lg font-black tracking-tight text-text">
+                                Architect AI
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                                Secure sign in
+                            </p>
+                        </div>
+                    </Link>
 
-            <header className="fixed top-0 w-full z-50 flex justify-between items-center px-10 h-20 bg-black/20 backdrop-blur-xl border-b border-white/5">
-                <Link to="/" className="text-xl font-black tracking-tighter text-white uppercase italic">
-                    Architect<span className="text-blue-500">.AI</span>
-                </Link>
-
-                <div className="hidden md:flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Verifying Identity</span>
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                    <div className="hidden items-center gap-2 sm:flex">
+                        <ShieldCheck size={14} className="text-success" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                            Encrypted session
+                        </span>
+                    </div>
                 </div>
             </header>
 
-            <main className="flex-grow flex items-center justify-center pt-20">
-                <div className="w-full max-w-[1440px] grid md:grid-cols-2 min-h-[820px] rounded-3xl overflow-hidden border border-white/5 shadow-[0_0_60px_rgba(0,0,0,0.5)]">
-                    <div className="hidden md:flex relative items-center justify-center p-12 bg-[#111]">
-                        <img
-                            src="https://images.unsplash.com/photo-1506744038136-46273834b3fb"
-                            alt="Abstract architectural landscape"
-                            className="absolute inset-0 w-full h-full object-cover opacity-30 grayscale"
-                        />
-                        <div className="relative z-10 max-w-lg">
-                            <h2 className="text-5xl font-bold mb-6">
-                                Ethereal Digital Structures
-                            </h2>
+            <main className="relative z-10 mx-auto grid min-h-[calc(100vh-5rem)] max-w-7xl gap-8 px-6 py-8 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:py-12">
+                <motion.section
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    className="app-panel-strong flex flex-col justify-between rounded-[36px] p-6 sm:p-8 lg:p-10"
+                >
+                    <div>
+                        <span className="app-chip">
+                            <LockKeyhole size={12} className="text-accent" />
+                            Private workspace
+                        </span>
+                        <h1 className="mt-6 max-w-xl text-4xl font-black leading-[0.95] tracking-tight text-text sm:text-5xl">
+                            Sign in to a quieter, more deliberate AI workspace.
+                        </h1>
+                        <p className="mt-5 max-w-xl text-base leading-8 text-text-muted">
+                            Access the chat, dashboard, analytics, and settings from one place. The new UI is built to feel
+                            calm on first load and efficient after that.
+                        </p>
+
+                        <div className="mt-8 space-y-3">
+                            {benefits.map((item) => (
+                                <div key={item} className="flex items-start gap-3 rounded-[22px] border border-border/70 bg-surface px-4 py-3 text-sm leading-7 text-text-muted">
+                                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-accent" />
+                                    <span>{item}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="flex flex-col justify-center items-center px-6 md:px-20 py-12 bg-black/40 backdrop-blur-2xl">
-                        <div className="w-full max-w-md">
-                            <div className="mb-10">
-                                <h1 className="text-3xl font-bold mb-2">
-                                    Welcome Back
-                                </h1>
-                                <p className="text-gray-400 text-sm">
-                                    Please enter your details to sign in.
-                                </p>
+                    <p className="mt-8 text-sm leading-7 text-text-muted">
+                        Need access?{" "}
+                        <Link to="/register" className="font-bold text-accent transition-colors hover:text-accent-strong">
+                            Request an account
+                        </Link>
+                    </p>
+                </motion.section>
+
+                <motion.section
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.65, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+                    className="app-panel-strong rounded-[36px] p-6 sm:p-8 lg:p-10"
+                >
+                    <div className="mb-8">
+                        <p className="text-[10px] font-black uppercase tracking-[0.32em] text-muted">
+                            Welcome back
+                        </p>
+                        <h2 className="mt-3 text-3xl font-black tracking-tight text-text">
+                            Sign in
+                        </h2>
+                        <p className="mt-3 max-w-xl text-sm leading-7 text-text-muted">
+                            Use your email and password to enter the workspace.
+                        </p>
+                    </div>
+
+                    <form className="space-y-5" onSubmit={handleLogin}>
+                        <label className="block">
+                            <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-muted">
+                                Email
+                            </span>
+                            <div className="relative">
+                                <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" size={18} />
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="architect@studio.ai"
+                                    className="app-input pl-11"
+                                />
                             </div>
+                        </label>
 
-                            <form className="space-y-6" onSubmit={handleLogin}>
-                                <div>
-                                    <label className="text-xs text-gray-400 uppercase">
-                                        Email
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="architect@studio.ai"
-                                        className="w-full h-12 mt-2 px-4 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-xs text-gray-400 uppercase">
-                                        Password
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        placeholder="password"
-                                        className="w-full h-12 mt-2 px-4 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                    />
-                                    <div className="flex justify-end mt-2">
-                                        <Link to="/forgot-password" title="Forgot Password" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                                            Forgot password?
-                                        </Link>
-                                    </div>
-                                </div>
-
-                                {error && (
-                                    <div className="text-red-400 text-sm">
-                                        {error}
-                                    </div>
-                                )}
-
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full h-12 rounded-lg bg-gradient-to-r from-blue-500 to-blue-400 font-semibold"
-                                >
-                                    {loading ? "Signing in..." : "Sign In"}
-                                </button>
-                            </form>
-
-                            <p className="text-center mt-10 text-sm text-gray-400">
-                                New here?{" "}
-                                <Link to="/register" className="text-blue-400 hover:underline">
-                                    Request access
+                        <label className="block">
+                            <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-muted">
+                                Password
+                            </span>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="••••••••"
+                                className="app-input"
+                            />
+                            <div className="mt-2 flex justify-end">
+                                <Link to="/forgot-password" className="text-xs font-bold text-accent transition-colors hover:text-accent-strong">
+                                    Forgot password?
                                 </Link>
-                            </p>
-                        </div>
-                    </div>
-                </div>
+                            </div>
+                        </label>
+
+                        {error && (
+                            <div className="rounded-[20px] border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+                                {error}
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="app-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {loading ? "Signing in..." : (
+                                <>
+                                    Enter workspace
+                                    <ArrowRight size={14} />
+                                </>
+                            )}
+                        </button>
+                    </form>
+                </motion.section>
             </main>
         </div>
     );

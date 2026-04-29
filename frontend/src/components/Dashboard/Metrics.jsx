@@ -6,8 +6,8 @@ export default function Metrics({ data }) {
         hidden: { opacity: 0 },
         show: {
             opacity: 1,
-            transition: { staggerChildren: 0.1 }
-        }
+            transition: { staggerChildren: 0.1 },
+        },
     };
 
     return (
@@ -15,77 +15,65 @@ export default function Metrics({ data }) {
             variants={container}
             initial="hidden"
             animate="show"
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            className="grid grid-cols-1 gap-6 md:grid-cols-3"
         >
             <Card
-                icon={<Shield size={24} />}
+                icon={<Shield size={22} />}
                 label="ACTIVE STATUS"
                 title="System Health"
                 value={data.health === null || data.health === undefined ? "--" : `${data.health}%`}
-                color="from-emerald-500 to-green-400"
-                textColor="text-emerald-400"
+                color="text-success"
+                bg="bg-success/10"
+                borderColor="border-success/20"
             />
             <Card
-                icon={<Cpu size={24} />}
+                icon={<Cpu size={22} />}
                 label="COMPUTING"
                 title="Token Usage"
                 value={`${((data.tokens || 0) / 1000000).toFixed(1)}M`}
-                color="from-blue-500 to-cyan-400"
-                textColor="text-blue-400"
+                color="text-accent"
+                bg="bg-accent/10"
+                borderColor="border-accent/20"
             />
             <Card
-                icon={<MessageSquare size={24} />}
+                icon={<MessageSquare size={22} />}
                 label="INTERACTIONS"
                 title="Total Conversations"
                 value={data.total_messages || 0}
-                color="from-cyan-500 to-sky-400"
-                textColor="text-cyan-400"
+                color="text-warning"
+                bg="bg-warning/10"
+                borderColor="border-warning/20"
             />
         </motion.section>
     );
 }
 
-function Card({ icon, label, title, value, color, textColor }) {
+function Card({ icon, label, title, value, color, bg, borderColor }) {
     const item = {
         hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
+        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
     };
 
     return (
         <motion.div
             variants={item}
-            whileHover={{ y: -5, scale: 1.02 }}
-            className="relative bg-white/[0.02] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.05] shadow-[0_8px_30px_rgb(0,0,0,0.4)] overflow-hidden group cursor-pointer"
+            whileHover={{ y: -4, scale: 1.01 }}
+            className={`group relative overflow-hidden rounded-[28px] border ${borderColor} bg-surface p-6 shadow-[0_16px_40px_rgba(0,0,0,0.24)]`}
         >
-            {/* Top glowing gradient line */}
-            <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${color} opacity-70 group-hover:opacity-100 transition-opacity`} />
+            <div className={`absolute inset-0 ${bg} opacity-0 transition-opacity duration-300 group-hover:opacity-100`} />
 
-            {/* Ambient background glow on hover */}
-            <div className={`absolute -right-10 -top-10 w-32 h-32 bg-gradient-to-br ${color} rounded-full blur-[60px] opacity-10 group-hover:opacity-30 transition-opacity duration-500`} />
-
-            {/* 🔹 TOP */}
-            <div className="flex items-center justify-between mb-8">
-                <div className={`p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] ${textColor} shadow-lg`}>
+            <div className="relative z-10 mb-8 flex items-center justify-between">
+                <div className={`rounded-2xl border ${borderColor} ${bg} p-3 ${color}`}>
                     {icon}
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-[10px] font-bold text-gray-500 tracking-widest uppercase">
-                        {label}
-                    </span>
-                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted">
+                    {label}
+                </span>
             </div>
 
-            {/* 🔹 CONTENT */}
             <div className="relative z-10">
-                <p className="text-sm font-medium text-gray-400 mb-1">
-                    {title}
-                </p>
-                <div className="flex items-baseline gap-2">
-                    <h3 className="text-4xl font-bold text-white tracking-tight">
-                        {value}
-                    </h3>
-                </div>
+                <p className="text-sm font-medium text-text-muted">{title}</p>
+                <h3 className="mt-1 text-4xl font-black tracking-tight text-text">{value}</h3>
             </div>
         </motion.div>
     );
