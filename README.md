@@ -111,7 +111,7 @@ We provide utility scripts to help you get started quickly:
 | **Frontend**    | `http://localhost:3000`              |
 | **Backend API** | `http://localhost:8000`              |
 | **AI Service**  | `http://localhost:8001`              |
-| **MySQL**       | `3306` (hoặc `3307` nếu dùng Docker) |
+| **MySQL**       | `3306` (or `3307` if using Docker) |
 | **Redis**       | `6379`                               |
 
 ---
