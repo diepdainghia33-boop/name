@@ -1,5 +1,27 @@
 # 🌌 ChatID / Architect AI Platform
 
+<<<<<<< HEAD
+ChatID is a modern conversational AI platform that combines an intelligent chat interface with a powerful administration system (Dashboard). The project is designed to provide a smooth AI experience, supporting multiple models and deep integration into user workflows.
+
+---
+
+## 🚀 Project Introduction
+
+ChatID is more than just a simple chat application. It is a complete ecosystem including:
+
+- **Premium Chat Interface**: Supports Markdown, Code highlighting, file/image uploads, and real-time web search.
+- **Dashboard System**: Monitor performance, usage traffic, and analyze user behavior with intuitive charts.
+- **Flexible AI Management**: Allows configuration of multiple AI providers (Groq, Anthropic, ...) and easy API Key management.
+- **Performance Optimization**: Uses Redis for caching to ensure the fastest response speeds.
+
+---
+
+## 🏗️ System Architecture
+
+The system is built using a simple Microservices architecture, separating the interface, business logic, and AI processing.
+
+### High-Level Architecture Diagram
+=======
 ChatID is a modern AI conversational platform that combines an intelligent chat interface with a powerful dashboard management system. The project is designed to deliver a seamless AI experience, support multiple AI models, and integrate deeply into users’ workflows.
 
 ---
@@ -27,6 +49,7 @@ ChatID is more than just a chat application. It is a complete AI ecosystem that 
 The platform follows a lightweight microservices architecture, separating the frontend, backend, and AI processing layers.
 
 ## High-Level Architecture
+>>>>>>> a0de1c232751a7d7532c6aec6ccb9225d7e8e6c7
 
 ```mermaid
 graph TD
@@ -81,6 +104,55 @@ MySQL	8.0+
 Redis	Latest Stable
 Docker	Optional
 
+<<<<<<< HEAD
+### Component Details:
+
+1.  **Frontend (React)**:
+    - Uses React combined with modern UI libraries.
+    - Manages application state, displays messages, and dashboard charts.
+2.  **Backend (Laravel)**:
+    - Acts as an API Gateway and handles core business logic (Auth, Database, Logging).
+    - Manages access control (Sanctum) and coordinates requests to the AI Service.
+3.  **AI Service (FastAPI)**:
+    - A high-performance Python service specialized in processing AI tasks.
+    - Integrates LangChain/LlamaIndex to interact with LLMs.
+    - Supports file processing, image processing (OCR), and web scraping.
+
+---
+
+## 🔄 How It Works?
+
+### 1. Message Processing Flow (Chat Flow)
+
+- **Step 1**: User sends a message from the Frontend.
+- **Step 2**: Backend receives the request, checks permissions, and saves the message to MySQL.
+- **Step 3**: Backend sends the request to the AI Service via HTTP protocol.
+- **Step 4**: AI Service processes the content (OCR for files or web search if needed), then calls the LLM API.
+- **Step 5**: Results are returned through AI Service -> Backend -> Frontend and displayed to the user.
+
+### 2. Dashboard Data Flow
+
+- All user activities (sending messages, logging in, changing settings) are recorded by the Backend in `activity_logs`.
+- When the user accesses the Dashboard, the Backend calculates metrics (Response Time, Success Rate, ...) and returns data for ApexCharts on the Frontend.
+
+---
+
+## 🛠️ Environment Requirements
+
+- **PHP**: 8.2+ (Composer included)
+- **Node.js**: 18+ (npm or yarn)
+- **Python**: 3.10+ (pip)
+- **Database**: MySQL 8.0+ & Redis
+- **Additional Tools**: Tesseract OCR (if using OCR), Docker (optional)
+
+---
+
+## 💻 Installation Guide
+
+### Method 1: Quick Run with Docker (Recommended)
+
+```bash
+=======
 Additional tools:
 
 Composer
@@ -88,8 +160,30 @@ npm / yarn
 Tesseract OCR (optional for OCR features)
 💻 Installation Guide
 Option 1: Docker Setup (Recommended)
+>>>>>>> a0de1c232751a7d7532c6aec6ccb9225d7e8e6c7
 docker-compose up --build
 
+<<<<<<< HEAD
+The system will automatically initialize Frontend (3000), Backend (8000), and AI Service (8001).
+
+### Method 2: Manual Installation on Windows
+
+We provide utility scripts to help you get started quickly:
+
+1.  **Install Dependencies**:
+    ```bash
+    # Run setup script (if available) or install manually:
+    cd BackEnd && composer install
+    cd ../frontend && npm install
+    cd ../ai_service && pip install -r requirements.txt
+    ```
+2.  **Configure .env**: Copy the `.env.example` files to `.env` in all 3 directories and fill in the necessary information (API Keys, Database config).
+3.  **Launch**:
+    ```bash
+    # Use the combined script
+    .\start-all.bat
+    ```
+=======
 Services:
 
 Frontend → localhost:3000
@@ -109,12 +203,25 @@ npm install
 cd ../ai_service
 pip install -r requirements.txt
 2. Configure Environment Variables
+>>>>>>> a0de1c232751a7d7532c6aec6ccb9225d7e8e6c7
 
 Copy:
 
+<<<<<<< HEAD
+## 📊 Default Ports
+
+| Component       | URL / Port                         |
+| :-------------- | :--------------------------------- |
+| **Frontend**    | `http://localhost:3000`            |
+| **Backend API** | `http://localhost:8000`            |
+| **AI Service**  | `http://localhost:8001`            |
+| **MySQL**       | `3306` (or `3307` if using Docker) |
+| **Redis**       | `6379`                             |
+=======
 .env.example -> .env
 
 Required configuration:
+>>>>>>> a0de1c232751a7d7532c6aec6ccb9225d7e8e6c7
 
 Database credentials
 Redis configuration
@@ -126,6 +233,11 @@ AI Provider settings
 Service	URL / Port
 Frontend	http://localhost:3000
 
+<<<<<<< HEAD
+## 📝 License
+
+Project developed by **Architect AI Team**. Please contact us for more details regarding copyright.
+=======
 Backend API	http://localhost:8000
 
 AI Service	http://localhost:8001
@@ -174,3 +286,4 @@ Developed by Architect AI Team
 
 This project is proprietary software developed by the Architect AI Team.
 Please contact the team for licensing and copyright information.
+>>>>>>> a0de1c232751a7d7532c6aec6ccb9225d7e8e6c7
