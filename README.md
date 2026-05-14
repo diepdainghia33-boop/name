@@ -1,121 +1,121 @@
 # 🌌 ChatID / Architect AI Platform
 
-ChatID là một nền tảng AI hội thoại hiện đại, kết hợp giữa giao diện chat thông minh và hệ thống quản trị (Dashboard) mạnh mẽ. Dự án được thiết kế để cung cấp trải nghiệm AI mượt mà, hỗ trợ đa mô hình và tích hợp sâu vào quy trình làm việc của người dùng.
+ChatID is a modern conversational AI platform that combines an intelligent chat interface with a powerful administration system (Dashboard). The project is designed to provide a smooth AI experience, supporting multiple models and deep integration into user workflows.
 
 ---
 
-## 🚀 Giới thiệu Dự án
+## 🚀 Project Introduction
 
-ChatID không chỉ là một ứng dụng chat đơn thuần. Đây là một hệ sinh thái hoàn chỉnh bao gồm:
+ChatID is more than just a simple chat application. It is a complete ecosystem including:
 
-- **Giao diện Chat Premium**: Hỗ trợ Markdown, Code highlighting, upload file/ảnh và tìm kiếm web thời gian thực.
-- **Hệ thống Dashboard**: Theo dõi hiệu suất, lưu lượng sử dụng và phân tích hành vi người dùng bằng biểu đồ trực quan.
-- **Quản lý AI linh hoạt**: Cho phép cấu hình nhiều nhà cung cấp AI (Groq, Anthropic, ...) và quản lý API Keys dễ dàng.
-- **Tối ưu hóa hiệu suất**: Sử dụng Redis để caching và đảm bảo tốc độ phản hồi nhanh nhất.
+- **Premium Chat Interface**: Supports Markdown, Code highlighting, file/image uploads, and real-time web search.
+- **Dashboard System**: Monitor performance, usage traffic, and analyze user behavior with intuitive charts.
+- **Flexible AI Management**: Allows configuration of multiple AI providers (Groq, Anthropic, ...) and easy API Key management.
+- **Performance Optimization**: Uses Redis for caching to ensure the fastest response speeds.
 
 ---
 
-## 🏗️ Cấu trúc Hệ thống
+## 🏗️ System Architecture
 
-Hệ thống được xây dựng theo kiến trúc Microservices đơn giản, tách biệt giữa giao diện, nghiệp vụ và xử lý AI.
+The system is built using a simple Microservices architecture, separating the interface, business logic, and AI processing.
 
-### Sơ đồ kiến trúc (High-Level)
+### High-Level Architecture Diagram
 
 ```mermaid
 graph TD
-    User((Người dùng)) -->|Truy cập| FE[Frontend - React]
+    User((User)) -->|Access| FE[Frontend - React]
     FE -->|API Request| BE[Backend - Laravel]
-    BE -->|Lưu trữ| DB[(MySQL)]
+    BE -->|Storage| DB[(MySQL)]
     BE -->|Caching| RD[(Redis)]
     BE -->|AI Task| AIS[AI Service - FastAPI]
-    AIS -->|Xử lý| LLM[LLM Providers - Groq/Anthropic]
+    AIS -->|Processing| LLM[LLM Providers - Groq/Anthropic]
     AIS -->|OCR| TESS[Tesseract OCR]
 ```
 
-### Chi tiết các thành phần:
+### Component Details:
 
 1.  **Frontend (React)**:
-    - Sử dụng React kết hợp với các thư viện UI hiện đại.
-    - Quản lý trạng thái ứng dụng, hiển thị tin nhắn và biểu đồ dashboard.
+    - Uses React combined with modern UI libraries.
+    - Manages application state, displays messages, and dashboard charts.
 2.  **Backend (Laravel)**:
-    - Đóng vai trò là API Gateway và xử lý nghiệp vụ chính (Auth, Database, Logging).
-    - Quản lý quyền truy cập (Sanctum) và điều phối các yêu cầu đến AI Service.
+    - Acts as an API Gateway and handles core business logic (Auth, Database, Logging).
+    - Manages access control (Sanctum) and coordinates requests to the AI Service.
 3.  **AI Service (FastAPI)**:
-    - Một dịch vụ Python hiệu suất cao chuyên xử lý các tác vụ AI.
-    - Tích hợp LangChain/LlamaIndex để tương tác với LLMs.
-    - Hỗ trợ xử lý file, hình ảnh (OCR) và web scraping.
+    - A high-performance Python service specialized in processing AI tasks.
+    - Integrates LangChain/LlamaIndex to interact with LLMs.
+    - Supports file processing, image processing (OCR), and web scraping.
 
 ---
 
-## 🔄 Hoạt động như thế nào?
+## 🔄 How It Works?
 
-### 1. Luồng xử lý tin nhắn (Chat Flow)
+### 1. Message Processing Flow (Chat Flow)
 
-- **Bước 1**: Người dùng gửi tin nhắn từ Frontend.
-- **Bước 2**: Backend nhận yêu cầu, kiểm tra quyền và lưu tin nhắn vào MySQL.
-- **Bước 3**: Backend gửi yêu cầu đến AI Service qua giao thức HTTP.
-- **Bước 4**: AI Service xử lý nội dung (nếu có file sẽ OCR hoặc tìm kiếm web), sau đó gọi API của LLM.
-- **Bước 5**: Kết quả trả về qua AI Service -> Backend -> Frontend và hiển thị cho người dùng.
+- **Step 1**: User sends a message from the Frontend.
+- **Step 2**: Backend receives the request, checks permissions, and saves the message to MySQL.
+- **Step 3**: Backend sends the request to the AI Service via HTTP protocol.
+- **Step 4**: AI Service processes the content (OCR for files or web search if needed), then calls the LLM API.
+- **Step 5**: Results are returned through AI Service -> Backend -> Frontend and displayed to the user.
 
-### 2. Luồng dữ liệu Dashboard
+### 2. Dashboard Data Flow
 
-- Mọi hoạt động của người dùng (gửi tin nhắn, đăng nhập, đổi cài đặt) đều được Backend ghi lại vào `activity_logs`.
-- Khi người dùng vào Dashboard, Backend sẽ tính toán các chỉ số (Response Time, Success Rate, ...) và trả về dữ liệu cho các biểu đồ ApexCharts trên Frontend.
+- All user activities (sending messages, logging in, changing settings) are recorded by the Backend in `activity_logs`.
+- When the user accesses the Dashboard, the Backend calculates metrics (Response Time, Success Rate, ...) and returns data for ApexCharts on the Frontend.
 
 ---
 
-## 🛠️ Yêu cầu Môi trường
+## 🛠️ Environment Requirements
 
-- **PHP**: 8.2+ (Composer đi kèm)
-- **Node.js**: 18+ (npm hoặc yarn)
+- **PHP**: 8.2+ (Composer included)
+- **Node.js**: 18+ (npm or yarn)
 - **Python**: 3.10+ (pip)
 - **Database**: MySQL 8.0+ & Redis
-- **Công cụ bổ sung**: Tesseract OCR (nếu dùng OCR), Docker (tùy chọn)
+- **Additional Tools**: Tesseract OCR (if using OCR), Docker (optional)
 
 ---
 
-## 💻 Hướng dẫn Cài đặt
+## 💻 Installation Guide
 
-### Cách 1: Chạy nhanh bằng Docker (Khuyên dùng)
+### Method 1: Quick Run with Docker (Recommended)
 
 ```bash
 docker-compose up --build
 ```
 
-Hệ thống sẽ tự động khởi tạo Frontend (3000), Backend (8000) và AI Service (8001).
+The system will automatically initialize Frontend (3000), Backend (8000), and AI Service (8001).
 
-### Cách 2: Cài đặt thủ công trên Windows
+### Method 2: Manual Installation on Windows
 
-Chúng tôi cung cấp các script tiện ích để bạn bắt đầu nhanh chóng:
+We provide utility scripts to help you get started quickly:
 
-1.  **Cài đặt Dependencies**:
+1.  **Install Dependencies**:
     ```bash
-    # Chạy script setup (nếu có) hoặc cài thủ công:
+    # Run setup script (if available) or install manually:
     cd BackEnd && composer install
     cd ../frontend && npm install
     cd ../ai_service && pip install -r requirements.txt
     ```
-2.  **Cấu hình .env**: Sao chép các file `.env.example` thành `.env` trong cả 3 thư mục và điền thông tin cần thiết (API Keys, Database config).
-3.  **Khởi chạy**:
+2.  **Configure .env**: Copy the `.env.example` files to `.env` in all 3 directories and fill in the necessary information (API Keys, Database config).
+3.  **Launch**:
     ```bash
-    # Sử dụng script tổng hợp
+    # Use the combined script
     .\start-all.bat
     ```
 
 ---
 
-## 📊 Thông số Cổng (Default Ports)
+## 📊 Default Ports
 
-| Thành phần      | URL / Port                           |
-| :-------------- | :----------------------------------- |
-| **Frontend**    | `http://localhost:3000`              |
-| **Backend API** | `http://localhost:8000`              |
-| **AI Service**  | `http://localhost:8001`              |
-| **MySQL**       | `3306` (hoặc `3307` nếu dùng Docker) |
-| **Redis**       | `6379`                               |
+| Component       | URL / Port                         |
+| :-------------- | :--------------------------------- |
+| **Frontend**    | `http://localhost:3000`            |
+| **Backend API** | `http://localhost:8000`            |
+| **AI Service**  | `http://localhost:8001`            |
+| **MySQL**       | `3306` (or `3307` if using Docker) |
+| **Redis**       | `6379`                             |
 
 ---
 
-## 📝 Giấy phép
+## 📝 License
 
-Dự án được phát triển bởi **Architect AI Team**. Vui lòng liên hệ để biết thêm chi tiết về bản quyền.
+Project developed by **Architect AI Team**. Please contact us for more details regarding copyright.
