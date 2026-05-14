@@ -1,25 +1,25 @@
 # 🌌 ChatID / Architect AI Platform
 
-ChatID is a modern conversational AI platform that combines an intelligent chat interface with a powerful administration system (Dashboard). The project is designed to provide a smooth AI experience, supporting multiple models and deep integration into user workflows.
+ChatID là một nền tảng AI hội thoại hiện đại, kết hợp giữa giao diện chat thông minh và hệ thống quản trị (Dashboard) mạnh mẽ. Dự án được thiết kế để cung cấp trải nghiệm AI mượt mà, hỗ trợ đa mô hình và tích hợp sâu vào quy trình làm việc của người dùng.
 
 ---
 
-## 🚀 Project Introduction
+## 🚀 Giới thiệu Dự án
 
-ChatID is more than just a simple chat application. It is a complete ecosystem including:
+ChatID không chỉ là một ứng dụng chat đơn thuần. Đây là một hệ sinh thái hoàn chỉnh bao gồm:
 
-- **Premium Chat Interface**: Supports Markdown, Code highlighting, file/image uploads, and real-time web search.
-- **Dashboard System**: Monitor performance, usage traffic, and analyze user behavior with intuitive charts.
-- **Flexible AI Management**: Allows configuration of multiple AI providers (Groq, Anthropic, ...) and easy API Key management.
-- **Performance Optimization**: Uses Redis for caching to ensure the fastest response speeds.
+- **Giao diện Chat Premium**: Hỗ trợ Markdown, Code highlighting, upload file/ảnh và tìm kiếm web thời gian thực.
+- **Hệ thống Dashboard**: Theo dõi hiệu suất, lưu lượng sử dụng và phân tích hành vi người dùng bằng biểu đồ trực quan.
+- **Quản lý AI linh hoạt**: Cho phép cấu hình nhiều nhà cung cấp AI (Groq, Anthropic, ...) và quản lý API Keys dễ dàng.
+- **Tối ưu hóa hiệu suất**: Sử dụng Redis để caching và đảm bảo tốc độ phản hồi nhanh nhất.
 
 ---
 
-## 🏗️ System Architecture
+## 🏗️ Cấu trúc Hệ thống
 
-The system is built using a simple Microservices architecture, separating the interface, business logic, and AI processing.
+Hệ thống được xây dựng theo kiến trúc Microservices đơn giản, tách biệt giữa giao diện, nghiệp vụ và xử lý AI.
 
-### High-Level Architecture Diagram
+### Sơ đồ kiến trúc (High-Level)
 
 ```mermaid
 graph TD
@@ -32,7 +32,7 @@ graph TD
     AIS -->|OCR| TESS[Tesseract OCR]
 ```
 
-### Component Details:
+### Chi tiết các thành phần:
 
 1.  **Frontend (React)**:
     - Uses React combined with modern UI libraries.
@@ -78,11 +78,19 @@ graph TD
 
 ### Method 1: Quick Run with Docker (Recommended)
 
-```bash
-docker-compose up --build
-```
+````bash
+=======
+Additional tools:
 
-The system will automatically initialize Frontend (3000), Backend (8000), and AI Service (8001).
+Composer
+npm / yarn
+Tesseract OCR (optional for OCR features)
+💻 Installation Guide
+Option 1: Docker Setup (Recommended)
+>>>>>>> a0de1c232751a7d7532c6aec6ccb9225d7e8e6c7
+docker-compose up --build
+
+Hệ thống sẽ tự động khởi tạo Frontend (3000), Backend (8000) và AI Service (8001).
 
 ### Method 2: Manual Installation on Windows
 
@@ -104,18 +112,19 @@ We provide utility scripts to help you get started quickly:
 
 ---
 
-## 📊 Default Ports
+## 📊 Thông số Cổng (Default Ports)
 
-| Component       | URL / Port                         |
-| :-------------- | :--------------------------------- |
-| **Frontend**    | `http://localhost:3000`            |
-| **Backend API** | `http://localhost:8000`            |
-| **AI Service**  | `http://localhost:8001`            |
-| **MySQL**       | `3306` (or `3307` if using Docker) |
-| **Redis**       | `6379`                             |
+| Thành phần      | URL / Port                           |
+| :-------------- | :----------------------------------- |
+| **Frontend**    | `http://localhost:3000`              |
+| **Backend API** | `http://localhost:8000`              |
+| **AI Service**  | `http://localhost:8001`              |
+| **MySQL**       | `3306` (hoặc `3307` nếu dùng Docker) |
+| **Redis**       | `6379`                               |
 
 ---
 
-## 📝 License
+## 📝 Giấy phép
 
-Project developed by **Architect AI Team**. Please contact us for more details regarding copyright.
+Dự án được phát triển bởi **Architect AI Team**. Vui lòng liên hệ để biết thêm chi tiết về bản quyền.
+````
