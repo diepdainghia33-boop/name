@@ -78,17 +78,9 @@ graph TD
 
 ### Method 1: Quick Run with Docker (Recommended)
 
-````bash
-=======
-Additional tools:
-
-Composer
-npm / yarn
-Tesseract OCR (optional for OCR features)
-💻 Installation Guide
-Option 1: Docker Setup (Recommended)
->>>>>>> a0de1c232751a7d7532c6aec6ccb9225d7e8e6c7
+```bash
 docker-compose up --build
+```
 
 Hệ thống sẽ tự động khởi tạo Frontend (3000), Backend (8000) và AI Service (8001).
 
@@ -127,4 +119,3 @@ We provide utility scripts to help you get started quickly:
 ## 📝 Giấy phép
 
 Dự án được phát triển bởi **Architect AI Team**. Vui lòng liên hệ để biết thêm chi tiết về bản quyền.
-````
