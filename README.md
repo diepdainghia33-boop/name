@@ -118,4 +118,5 @@ We provide utility scripts to help you get started quickly:
 
 ## 📝  License
 
-Dự án được phát triển bởi **Architect AI Team**. Vui lòng liên hệ để biết thêm chi tiết về bản quyền.
+The project is developed by the **Architect AI Team**. Please contact us for more information regarding licensing.
+
