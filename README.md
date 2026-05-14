@@ -1,25 +1,25 @@
 # 🌌 ChatID / Architect AI Platform
 
-ChatID là một nền tảng AI hội thoại hiện đại, kết hợp giữa giao diện chat thông minh và hệ thống quản trị (Dashboard) mạnh mẽ. Dự án được thiết kế để cung cấp trải nghiệm AI mượt mà, hỗ trợ đa mô hình và tích hợp sâu vào quy trình làm việc của người dùng.
+ChatID is a modern conversational AI platform that combines an intelligent chat interface with a powerful management Dashboard. The project is designed to provide a smooth AI experience, supporting multiple models and deep integration into user workflows.
 
 ---
 
-## 🚀 Giới thiệu Dự án
+## 🚀 Project Overview
 
-ChatID không chỉ là một ứng dụng chat đơn thuần. Đây là một hệ sinh thái hoàn chỉnh bao gồm:
+ChatID is more than just a simple chat application. It is a complete ecosystem including:
 
-- **Giao diện Chat Premium**: Hỗ trợ Markdown, Code highlighting, upload file/ảnh và tìm kiếm web thời gian thực.
-- **Hệ thống Dashboard**: Theo dõi hiệu suất, lưu lượng sử dụng và phân tích hành vi người dùng bằng biểu đồ trực quan.
-- **Quản lý AI linh hoạt**: Cho phép cấu hình nhiều nhà cung cấp AI (Groq, Anthropic, ...) và quản lý API Keys dễ dàng.
-- **Tối ưu hóa hiệu suất**: Sử dụng Redis để caching và đảm bảo tốc độ phản hồi nhanh nhất.
+- **Premium Chat Interface**: Supports Markdown, code highlighting, file/image uploads, and real-time web search.
+- **Dashboard System**: Monitors performance, usage traffic, and analyzes user behavior with intuitive charts.
+- **Flexible AI Management**: Allows configuration of multiple AI providers (Groq, Anthropic, ...) and easy management of API Keys.
+- **Performance Optimization**: Uses Redis for caching and ensures the fastest response speeds.
 
 ---
 
-## 🏗️ Cấu trúc Hệ thống
+## 🏗️ System Architecture
 
-Hệ thống được xây dựng theo kiến trúc Microservices đơn giản, tách biệt giữa giao diện, nghiệp vụ và xử lý AI.
+The system is built on a simple microservices architecture, separating the interface, business logic, and AI processing.
 
-### Sơ đồ kiến trúc (High-Level)
+### High-Level Architecture Diagram
 
 ```mermaid
 graph TD
