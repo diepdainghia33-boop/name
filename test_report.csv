@@ -1,0 +1,21 @@
+﻿ID,Tên kịch bản / Tính năng,Kết quả mong đợi,Loại kiểm thử,Trạng thái
+AUTH_01,Đăng nhập với thông tin đúng,"Đăng nhập thành công, chuyển hướng vào Dashboard.",Manual,Pending (Manual Test Required)
+AUTH_02,Đăng nhập với mật khẩu sai,"Hiển thị thông báo lỗi ""Thông tin không chính xác"".",Manual,Pending (Manual Test Required)
+AUTH_03,Kiểm tra hết hạn Token,"Sau khi token hết hạn, người dùng tự động bị đăng xuất.",Manual,Pending (Manual Test Required)
+CHAT_01,Gửi tin nhắn văn bản thông thường,"Tin nhắn hiển thị trên UI, Backend lưu vào DB, nhận được phản hồi từ AI.",Manual,Pending (Manual Test Required)
+CHAT_02,Gửi tin nhắn khi AI Service bị lỗi,"Hiển thị thông báo lỗi ""Dịch vụ AI hiện không khả dụng"".",Manual,Pending (Manual Test Required)
+CHAT_03,Kiểm tra lịch sử chat,"Khi tải lại trang hoặc vào lại hội thoại cũ, các tin nhắn trước đó phải hiển thị đúng.",Manual,Pending (Manual Test Required)
+API_01,Tạo API Key mới,"Key mới xuất hiện trong danh sách, có thể sao chép được.",Manual,Pending (Manual Test Required)
+API_02,Xóa API Key,Key bị xóa khỏi danh sách và không còn hiệu lực sử dụng.,Manual,Pending (Manual Test Required)
+DASH_01,Hiển thị biểu đồ thống kê,Các biểu đồ (Analytics) hiển thị dữ liệu thực tế từ database.,Manual,Pending (Manual Test Required)
+DASH_02,Kiểm tra tính realtime,"Khi có tin nhắn mới, các con số thống kê trên Dashboard cập nhật (nếu có tính năng này).",Manual,Pending (Manual Test Required)
+INT_01,Backend gọi AI Service thành công,Log trên Backend cho thấy request đã gửi đến `ai_service` và nhận về mã 200.,Integration,Pending (Manual Test Required)
+INT_02,Kiểm tra cấu hình .env,Thay đổi thông tin trong `.env` (Vd: API Key của OpenAI) và kiểm tra AI có hoạt động đúng theo key mới không.,Integration,Pending (Manual Test Required)
+UI_01,Kiểm tra Responsive,Giao diện hiển thị tốt trên cả Mobile và Desktop.,Manual,Pending (Manual Test Required)
+UI_02,Kiểm tra Dark/Light Mode,"Chuyển đổi chế độ màu mượt mà, không bị lỗi font hay màu chữ khó đọc.",Manual,Pending (Manual Test Required)
+AUTO_PY_01,Kiểm tra Stats API (AI Service),"Trạng thái Stable, có cpu_speed",Automated,PASS
+AUTO_PY_02,Kiểm tra Analytics API (AI Service),Trả về dữ liệu ngày và biểu đồ,Automated,PASS
+AUTO_PY_03,Kiểm tra Chat API (AI Service),AI phản hồi đúng nội dung giả lập,Automated,PASS
+AUTO_PHP_01,Kiểm tra gửi tin nhắn (Backend),Lưu DB và gọi AI thành công,Automated,PASS
+AUTO_PHP_02,Kiểm tra xóa hội thoại (Backend),Xóa sạch dữ liệu trong database,Automated,PASS
+AUTO_PHP_03,Kiểm tra nhân bản hội thoại (Backend),Tạo bản sao chính xác của chat cũ,Automated,PASS

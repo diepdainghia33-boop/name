@@ -17,10 +17,10 @@ export default function Analytics() {
     }, []);
 
     return (
-        <div className="flex h-screen bg-black text-white">
+        <div className="app-shell flex h-screen bg-background text-text overflow-hidden">
             <SidebarLeft user={user} />
 
-            <main className="flex-1 p-8 ml-72 overflow-y-auto">
+            <main className="flex-1 p-4 md:p-8 ml-72 overflow-y-auto">
                 <div className="max-w-[1400px] mx-auto">
                     <Header />
                     <Stats />

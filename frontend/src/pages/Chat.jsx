@@ -9,6 +9,7 @@ import { chatApi } from "../api/chat.api";
 import RightPanel from "../components/Chat/RightPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
+import logo from "../assets/logo.png";
 
 
 const API = "http://127.0.0.1:8000/api";
@@ -77,9 +78,7 @@ export default function Chat() {
         const token = localStorage.getItem("token");
         if (!token) return;
         try {
-            const res = await axios.get(`${API}/conversations`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await chatApi.getConversations();
             setConversations(res.data || []);
         } catch (err) {
             console.error("fetchConversations error:", err);
@@ -106,22 +105,7 @@ export default function Chat() {
         }
     };
 
-    // ── Welcome message ──────────────────────────────────────────────────────────
-    useEffect(() => {
-        // Only show welcome if no messages and no active conversation
-        if (messages.length === 0 && !isLoading && !activeConversationId) {
-            const timer = setTimeout(() => {
-                setMessages([{
-                    id: "welcome",
-                    content: `Chào ${user?.name || "bạn"}! Tôi là **Architect AI** — trợ lý thông minh của bạn.\n\nTôi có thể giúp bạn:\n- 💡 Tư vấn kiến trúc phần mềm & hệ thống\n- 📊 Phân tích hóa đơn và chi phí\n- 💻 Viết code, debug, code review\n- ❓ Trả lời mọi câu hỏi kỹ thuật\n\nBạn muốn bắt đầu với điều gì?`,
-                    role: "bot",
-                    created_at: new Date().toISOString(),
-                    sentiment: { ota_class: "P1", confidence: 95 }
-                }]);
-            }, 300);
-            return () => clearTimeout(timer);
-        }
-    }, [messages.length, isLoading, activeConversationId, user?.name]);
+    // ── Welcome message effect removed to favor Premium UI Welcome component ───────────────────
 
     // ── Auto scroll on new messages ──────────────────────────────────────────────
     useEffect(() => {
@@ -137,11 +121,8 @@ export default function Chat() {
         setMobileSidebarOpen(false); // Close mobile sidebar
         setMessages([]);
         setIsLoading(true);
-        const token = localStorage.getItem("token");
         try {
-            const res = await axios.get(`${API}/conversations/${id}/messages`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await chatApi.getMessages(id);
             setMessages(res.data || []);
         } catch (err) {
             console.error("loadMessages error:", err);
@@ -160,11 +141,8 @@ export default function Chat() {
 
     // ── Delete conversation ───────────────────────────────────────────────────────
     const handleDeleteConversation = useCallback(async (id) => {
-        const token = localStorage.getItem("token");
         try {
-            await axios.delete(`${API}/conversations/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await chatApi.deleteConversation(id);
             setConversations(prev => prev.filter(c => c.id !== id));
             if (activeConversationId === id) {
                 setActiveConversationId(null);
@@ -177,28 +155,58 @@ export default function Chat() {
 
     // Placeholder handlers - connect to backend later
     const handlePinConversation = useCallback(async (id, pinned) => {
-        console.log(`Pin conversation ${id}:`, pinned);
-        // TODO: Call API
+        try {
+            const response = await chatApi.updateConversation(id, { is_pinned: pinned });
+            const updatedConversation = response.data?.conversation;
+            setConversations(prev => prev.map(c =>
+                c.id === id ? { ...c, ...(updatedConversation || { is_pinned: pinned }) } : c
+            ));
+        } catch (err) {
+            console.error("pinConversation error:", err);
+        }
     }, []);
 
     const handleArchiveConversation = useCallback(async (id, archived) => {
-        console.log(`Archive conversation ${id}:`, archived);
-        // TODO: Call API
-    }, []);
+        try {
+            const response = await chatApi.updateConversation(id, { is_archived: archived });
+            const updatedConversation = response.data?.conversation;
+            setConversations(prev => prev.map(c =>
+                c.id === id ? { ...c, ...(updatedConversation || { is_archived: archived }) } : c
+            ));
+            if (activeConversationId === id && archived) {
+                setActiveConversationId(null);
+                setMessages([]);
+            }
+        } catch (err) {
+            console.error("archiveConversation error:", err);
+        }
+    }, [activeConversationId]);
 
     const handleRenameConversation = useCallback(async (id, newTitle) => {
-        const token = localStorage.getItem("token");
         try {
-            await axios.put(`${API}/conversations/${id}`, { title: newTitle }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await chatApi.updateConversation(id, { title: newTitle });
+            const updatedConversation = response.data?.conversation;
             setConversations(prev => prev.map(c =>
-                c.id === id ? { ...c, title: newTitle } : c
+                c.id === id ? { ...c, ...(updatedConversation || { title: newTitle }) } : c
             ));
         } catch (err) {
             console.error("renameConversation error:", err);
         }
     }, []);
+
+    const handleDuplicateConversation = useCallback(async (id) => {
+        try {
+            const response = await chatApi.duplicateConversation(id);
+            const newConversation = response.data?.conversation;
+            if (newConversation) {
+                setConversations(prev => [newConversation, ...prev]);
+                // Automatically select the new duplicate
+                handleSelectConversation(newConversation.id);
+            }
+        } catch (err) {
+            console.error("duplicateConversation error:", err);
+        }
+    }, [handleSelectConversation]);
 
     // ── Send message ──────────────────────────────────────────────────────────────
     const handleSendMessage = useCallback(async (content, image = null, document = null, searchMode = false) => {
@@ -214,7 +222,7 @@ export default function Chat() {
         if (settings.ui_prefs.contextLength) formData.append("context_length", settings.ui_prefs.contextLength);
         if (settings.ui_prefs.inferencePrecision) formData.append("precision", settings.ui_prefs.inferencePrecision);
 
-        const msgType = document ? "document" : (image ? "image" : "text");
+        const msgType = document ? "document" : (image ? "bill" : "text");
 
         const tempId = `temp-${Date.now()}`;
         const tempUserMsg = {
@@ -256,7 +264,7 @@ export default function Chat() {
                 if ("Notification" in window && Notification.permission === "granted") {
                     new Notification("New message from Architect AI", {
                         body: bot_message.content,
-                        icon: "/logo.svg" // or another icon path
+                        icon: logo
                     });
                 }
             }
@@ -273,7 +281,9 @@ export default function Chat() {
                 const withoutTemp = prev.filter(m => m.id !== tempId);
                 return [
                     ...withoutTemp,
-                    { ...tempUserMsg, id: `u-${Date.now()}` },
+                    // Keep the temp message but update its state if needed, 
+                    // or just show it once and add the error message below.
+                    { ...tempUserMsg, id: `u-${Date.now()}` }, 
                     {
                         id: `err-${Date.now()}`,
                         content: "⚠️ Không thể kết nối đến server. Hãy kiểm tra:\n- Laravel backend (port 8000) đang chạy\n- AI service (port 8001) đang chạy\n- API key đã được cấu hình đúng",
@@ -327,7 +337,7 @@ export default function Chat() {
     }, [mobileSidebarOpen]);
 
     return (
-        <div className="h-screen flex bg-[#0e0e0e] text-white overflow-hidden">
+        <div className="app-shell h-screen flex bg-background text-text overflow-hidden">
             {/* Mobile overlay */}
             <AnimatePresence>
                 {mobileSidebarOpen && (
@@ -350,7 +360,7 @@ export default function Chat() {
             </div>
 
             {/* Main content */}
-            <main className="flex-1 ml-0 lg:ml-0 flex flex-col relative text-white bg-[#0e0e0e]">
+            <main className="relative flex min-w-0 flex-1 flex-col bg-background text-text">
                 <Header
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
@@ -367,7 +377,7 @@ export default function Chat() {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="md:hidden px-4 py-3 bg-[#0b0b0b] border-b border-white/5 overflow-hidden"
+                            className="md:hidden overflow-hidden border-b border-border/70 bg-background-elevated px-4 py-3"
                         >
                             <div className="relative">
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -376,7 +386,7 @@ export default function Chat() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search messages..."
-                                    className="w-full bg-white/[0.03] border border-white/10 pl-10 pr-10 py-2.5 rounded-2xl text-sm text-white placeholder-gray-600 outline-none"
+                                    className="w-full rounded-2xl border border-border/70 bg-background-elevated pl-10 pr-10 py-2.5 text-sm text-text outline-none placeholder:text-text-dim focus:border-accent/60 focus:ring-2 focus:ring-accent/15"
                                     autoFocus
                                 />
                                 {searchQuery && (
@@ -424,6 +434,7 @@ export default function Chat() {
                                     onPinConversation={handlePinConversation}
                                     onArchiveConversation={handleArchiveConversation}
                                     onRenameConversation={handleRenameConversation}
+                                    onDuplicateConversation={handleDuplicateConversation}
                                     activeId={activeConversationId}
                                     isMobile={true}
                                     onClose={() => setMobileConversationsOpen(false)}
@@ -433,7 +444,7 @@ export default function Chat() {
                     )}
                 </AnimatePresence>
 
-                <div className="flex-1 flex flex-col overflow-hidden relative">
+                <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
                     <ChatGPT
                         messages={filteredMessages}
                         isLoading={isLoading}
@@ -442,6 +453,7 @@ export default function Chat() {
                         showTimestamps={settings.toggles.showTimestamps}
                         autoScroll={settings.toggles.autoScroll}
                         onFeedback={handleFeedback}
+                        onSendSuggestion={handleSendMessage}
                     />
                     <InputBar 
                         onSend={handleSendMessage} 
@@ -460,6 +472,7 @@ export default function Chat() {
                 onPinConversation={handlePinConversation}
                 onArchiveConversation={handleArchiveConversation}
                 onRenameConversation={handleRenameConversation}
+                onDuplicateConversation={handleDuplicateConversation}
                 activeId={activeConversationId}
                 isMobile={false}
             />
