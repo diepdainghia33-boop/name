@@ -32,7 +32,7 @@ graph TD
     AIS -->|OCR| TESS[Tesseract OCR]
 ```
 
-### Chi tiết các thành phần:
+### Environment Requirements:
 
 1.  **Frontend (React)**:
     - Uses React combined with modern UI libraries.
@@ -104,7 +104,7 @@ We provide utility scripts to help you get started quickly:
 
 ---
 
-## 📊 Thông số Cổng (Default Ports)
+## 📊 Port Configuration (Default Ports)
 
 | Thành phần      | URL / Port                           |
 | :-------------- | :----------------------------------- |
@@ -116,6 +116,6 @@ We provide utility scripts to help you get started quickly:
 
 ---
 
-## 📝 Giấy phép
+## 📝  License
 
 Dự án được phát triển bởi **Architect AI Team**. Vui lòng liên hệ để biết thêm chi tiết về bản quyền.
