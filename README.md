@@ -1,25 +1,25 @@
 # 🌌 ChatID / Architect AI Platform
 
-ChatID là một nền tảng AI hội thoại hiện đại, kết hợp giữa giao diện chat thông minh và hệ thống quản trị (Dashboard) mạnh mẽ. Dự án được thiết kế để cung cấp trải nghiệm AI mượt mà, hỗ trợ đa mô hình và tích hợp sâu vào quy trình làm việc của người dùng.
+ChatID is a modern conversational AI platform that combines an intelligent chat interface with a powerful management Dashboard. The project is designed to provide a smooth AI experience, supporting multiple models and deep integration into user workflows.
 
 ---
 
-## 🚀 Giới thiệu Dự án
+## 🚀 Project Overview
 
-ChatID không chỉ là một ứng dụng chat đơn thuần. Đây là một hệ sinh thái hoàn chỉnh bao gồm:
+ChatID is more than just a simple chat application. It is a complete ecosystem including:
 
-- **Giao diện Chat Premium**: Hỗ trợ Markdown, Code highlighting, upload file/ảnh và tìm kiếm web thời gian thực.
-- **Hệ thống Dashboard**: Theo dõi hiệu suất, lưu lượng sử dụng và phân tích hành vi người dùng bằng biểu đồ trực quan.
-- **Quản lý AI linh hoạt**: Cho phép cấu hình nhiều nhà cung cấp AI (Groq, Anthropic, ...) và quản lý API Keys dễ dàng.
-- **Tối ưu hóa hiệu suất**: Sử dụng Redis để caching và đảm bảo tốc độ phản hồi nhanh nhất.
+- **Premium Chat Interface**: Supports Markdown, code highlighting, file/image uploads, and real-time web search.
+- **Dashboard System**: Monitors performance, usage traffic, and analyzes user behavior with intuitive charts.
+- **Flexible AI Management**: Allows configuration of multiple AI providers (Groq, Anthropic, ...) and easy management of API Keys.
+- **Performance Optimization**: Uses Redis for caching and ensures the fastest response speeds.
 
 ---
 
-## 🏗️ Cấu trúc Hệ thống
+## 🏗️ System Architecture
 
-Hệ thống được xây dựng theo kiến trúc Microservices đơn giản, tách biệt giữa giao diện, nghiệp vụ và xử lý AI.
+The system is built on a simple microservices architecture, separating the interface, business logic, and AI processing.
 
-### Sơ đồ kiến trúc (High-Level)
+### High-Level Architecture Diagram
 
 ```mermaid
 graph TD
@@ -32,17 +32,17 @@ graph TD
     AIS -->|OCR| TESS[Tesseract OCR]
 ```
 
-### Chi tiết các thành phần:
+### Component Details:
 
 1.  **Frontend (React)**:
-    - Uses React combined with modern UI libraries.
-    - Manages application state, displays messages, and dashboard charts.
+    - Built with React and modern UI libraries.
+    - Manages application state, displays messages, and renders dashboard charts.
 2.  **Backend (Laravel)**:
-    - Acts as an API Gateway and handles core business logic (Auth, Database, Logging).
+    - Functions as an API Gateway and handles core business logic (Authentication, Database, Logging).
     - Manages access control (Sanctum) and coordinates requests to the AI Service.
 3.  **AI Service (FastAPI)**:
-    - A high-performance Python service specialized in processing AI tasks.
-    - Integrates LangChain/LlamaIndex to interact with LLMs.
+    - A high-performance Python service specialized in AI tasks.
+    - Integrates LangChain/LlamaIndex to interact with various LLMs.
     - Supports file processing, image processing (OCR), and web scraping.
 
 ---
@@ -52,25 +52,25 @@ graph TD
 ### 1. Message Processing Flow (Chat Flow)
 
 - **Step 1**: User sends a message from the Frontend.
-- **Step 2**: Backend receives the request, checks permissions, and saves the message to MySQL.
-- **Step 3**: Backend sends the request to the AI Service via HTTP protocol.
-- **Step 4**: AI Service processes the content (OCR for files or web search if needed), then calls the LLM API.
+- **Step 2**: Backend receives the request, verifies permissions, and saves the message to MySQL.
+- **Step 3**: Backend forwards the request to the AI Service via HTTP.
+- **Step 4**: AI Service processes the content (performing OCR or web searches if necessary), then calls the LLM API.
 - **Step 5**: Results are returned through AI Service -> Backend -> Frontend and displayed to the user.
 
 ### 2. Dashboard Data Flow
 
-- All user activities (sending messages, logging in, changing settings) are recorded by the Backend in `activity_logs`.
-- When the user accesses the Dashboard, the Backend calculates metrics (Response Time, Success Rate, ...) and returns data for ApexCharts on the Frontend.
+- All user activities (messaging, logging in, setting changes) are recorded by the Backend in `activity_logs`.
+- When the user accesses the Dashboard, the Backend calculates metrics (Response Time, Success Rate, ...) and provides data for ApexCharts on the Frontend.
 
 ---
 
 ## 🛠️ Environment Requirements
 
-- **PHP**: 8.2+ (Composer included)
+- **PHP**: 8.2+ (including Composer)
 - **Node.js**: 18+ (npm or yarn)
 - **Python**: 3.10+ (pip)
 - **Database**: MySQL 8.0+ & Redis
-- **Additional Tools**: Tesseract OCR (if using OCR), Docker (optional)
+- **Additional Tools**: Tesseract OCR (optional for OCR features), Docker (optional)
 
 ---
 
@@ -82,7 +82,7 @@ graph TD
 docker-compose up --build
 ```
 
-Hệ thống sẽ tự động khởi tạo Frontend (3000), Backend (8000) và AI Service (8001).
+The system will automatically initialize the Frontend (3000), Backend (8000), and AI Service (8001).
 
 ### Method 2: Manual Installation on Windows
 
@@ -104,18 +104,18 @@ We provide utility scripts to help you get started quickly:
 
 ---
 
-## 📊 Thông số Cổng (Default Ports)
+## 📊 Port Configuration (Default Ports)
 
-| Thành phần      | URL / Port                           |
+| Component       | URL / Port                           |
 | :-------------- | :----------------------------------- |
 | **Frontend**    | `http://localhost:3000`              |
 | **Backend API** | `http://localhost:8000`              |
 | **AI Service**  | `http://localhost:8001`              |
-| **MySQL**       | `3306` (hoặc `3307` nếu dùng Docker) |
+| **MySQL**       | `3306` (or `3307` if using Docker)   |
 | **Redis**       | `6379`                               |
 
 ---
 
-## 📝 Giấy phép
+## 📝 License
 
-Dự án được phát triển bởi **Architect AI Team**. Vui lòng liên hệ để biết thêm chi tiết về bản quyền.
+The project is developed by the **Architect AI Team**. Please contact us for more information regarding licensing.

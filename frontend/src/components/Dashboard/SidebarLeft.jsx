@@ -1,6 +1,8 @@
 import { Home, MessageSquare, BarChart3, Settings, Search, Sparkles, LogOut, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { logoutApi } from "../../api/auth.api";
 
 const iconMap = {
     home: Home,
@@ -32,6 +34,7 @@ function NavItem({ icon: Icon, text, active, onClick }) {
 export default function Sidebar({ user }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const menuItems = [
         { text: "Overview", icon: "home", path: "/dashboard" },
@@ -39,6 +42,21 @@ export default function Sidebar({ user }) {
         { text: "Analytics", icon: "monitoring", path: "/analytics" },
         { text: "Configurations", icon: "settings", path: "/settings" },
     ];
+
+    const handleLogout = async () => {
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
+        try {
+            await logoutApi();
+        } catch (err) {
+            // Even if API call fails, clear local state and redirect
+            console.warn("Logout API error (ignored):", err);
+        } finally {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            navigate("/login");
+        }
+    };
 
     return (
         <aside className="sidebar-left-scroll fixed left-0 top-0 z-[100] flex h-dvh w-72 flex-col overflow-y-auto overscroll-contain border-r border-border/70 bg-background/95 backdrop-blur-xl">
@@ -120,7 +138,7 @@ export default function Sidebar({ user }) {
 
                 <div className="flex items-center gap-4 rounded-[24px] border border-border/70 bg-surface p-4 max-[1400px]:gap-3 max-[1400px]:p-3 max-[900px]:gap-3 max-[900px]:p-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-background-elevated text-text max-[900px]:h-10 max-[900px]:w-10">
-                        {user?.name?.charAt(0) || "A"}
+                        {user?.name?.charAt(0)?.toUpperCase() || "A"}
                     </div>
                     <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-text max-[900px]:text-[0.82rem]">
@@ -132,19 +150,24 @@ export default function Sidebar({ user }) {
                     </div>
                     <button
                         type="button"
-                        onClick={() => {
-                            localStorage.removeItem("token");
-                            localStorage.removeItem("user");
-                            window.location.href = "/login";
-                        }}
-                        className="rounded-full border border-border/70 p-2 text-muted transition-colors hover:border-danger/30 hover:bg-danger/10 hover:text-danger"
-                        aria-label="Sign out"
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                        className={`rounded-full border p-2 transition-colors ${
+                            isLoggingOut
+                                ? "border-border/40 cursor-not-allowed text-muted/40"
+                                : "border-border/70 text-muted hover:border-danger/30 hover:bg-danger/10 hover:text-danger"
+                        }`}
+                        aria-label="Đăng xuất"
+                        title="Đăng xuất"
                     >
-                        <LogOut size={16} />
+                        {isLoggingOut ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted/30 border-t-muted" />
+                        ) : (
+                            <LogOut size={16} />
+                        )}
                     </button>
                 </div>
             </div>
         </aside>
     );
 }
-

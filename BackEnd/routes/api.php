@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/conversations/{id}', 'App\Http\Controllers\ChatController@deleteConversation');
     Route::post('/conversations/{id}/duplicate', 'App\Http\Controllers\ChatController@duplicateConversation');
     Route::post('/messages/send', 'App\Http\Controllers\ChatController@sendMessage');
+    Route::post('/messages/send-batch', 'App\Http\Controllers\ChatController@sendBatchMessage');
     Route::post('/messages/{id}/feedback', 'App\Http\Controllers\ChatController@submitFeedback');
 
     // Settings Routes

@@ -374,15 +374,7 @@ def _extract_json_object(text: str):
         return None
 
 
-def _extract_invoice_with_claude(ocr_text: str):
-    if not ocr_text.strip():
-        return None
-
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        return None
-
-    prompt = f"""
-You are an invoice OCR extraction engine.
+INVOICE_EXTRACTION_PROMPT = """You are an invoice OCR extraction engine.
 Return only valid JSON, no markdown, no commentary.
 Use only the OCR text below. Do not invent missing values.
 
@@ -414,22 +406,53 @@ Rules:
 OCR text:
 <<<
 {ocr_text}
->>>
-"""
+>>>"""
 
-    response = get_anthropic_client().messages.create(
-        model="claude-3-5-sonnet-20241022",
-        max_tokens=900,
-        temperature=0,
-        messages=[{"role": "user", "content": prompt}],
-    )
 
-    content = ""
-    for block in response.content:
-        if hasattr(block, "text"):
-            content += block.text
+def _extract_invoice_with_claude(ocr_text: str):
+    """Try Claude first, fall back to Groq if no Anthropic key."""
+    if not ocr_text.strip():
+        return None
 
-    return _extract_json_object(content)
+    prompt = INVOICE_EXTRACTION_PROMPT.format(ocr_text=ocr_text)
+
+    # --- Try Claude (Anthropic) ---
+    anthropic_key = get_system_setting("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY"))
+    if anthropic_key:
+        try:
+            response = get_anthropic_client().messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=900,
+                temperature=0,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            content = ""
+            for block in response.content:
+                if hasattr(block, "text"):
+                    content += block.text
+            result = _extract_json_object(content)
+            if result:
+                return result
+        except Exception as exc:
+            print(f"Claude extraction failed, falling back to Groq: {exc}")
+
+    # --- Fallback: Groq (llama-3.3-70b) ---
+    try:
+        groq_client = get_groq_client()
+        completion = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "You are an invoice data extraction engine. Return only valid JSON matching the requested schema exactly. No markdown, no commentary."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=900,
+            temperature=0,
+        )
+        content = completion.choices[0].message.content or ""
+        return _extract_json_object(content)
+    except Exception as exc:
+        print(f"Groq invoice extraction failed: {exc}")
+        return None
 
 
 def _merge_invoice_data(base: dict, override: dict):
@@ -449,65 +472,164 @@ def _merge_invoice_data(base: dict, override: dict):
 
 
 def analyze_invoice_image(image_bytes: bytes, filename: Optional[str] = None, image_type: Optional[str] = None):
-    image = PILImage.open(io.BytesIO(image_bytes))
-    variants = _build_invoice_variants(image)
+    """
+    Analyze an invoice image using Groq Vision (no Tesseract required).
+    Falls back to Tesseract if Groq Vision fails.
+    """
 
-    best_text = ""
-    best_confidence = 0.0
-    best_score = -1
+    # --- Determine image media type ---
+    ext = (image_type or "jpg").lower().lstrip(".")
+    media_type_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp"}
+    media_type = media_type_map.get(ext, "image/jpeg")
 
-    for variant in variants:
-        try:
-            ocr_text = pytesseract.image_to_string(variant, lang="vie+eng", config=OCR_CONFIG)
-            cleaned_text = _clean_ocr_text(ocr_text)
-            confidence = _ocr_confidence(variant)
-            score = _score_ocr_text(cleaned_text, confidence)
-            if score > best_score:
-                best_text = cleaned_text
-                best_confidence = confidence
-                best_score = score
-        except Exception as exc:
-            print(f"OCR variant failed: {exc}")
+    # --- Encode image as base64 ---
+    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
 
-    base_data = _extract_invoice_regex(best_text)
-    structured = base_data
+    # --- Try Groq Vision first (no Tesseract needed) ---
+    groq_vision_prompt = """You are an invoice/receipt OCR and data extraction engine.
+Carefully read all text visible in this invoice/receipt image.
+Return ONLY a valid JSON object (no markdown, no explanation) with this exact schema:
+{
+  "raw_text": "<all visible text from the invoice, newline separated>",
+  "store_name": "<shop/restaurant/store name or null>",
+  "invoice_number": "<invoice/receipt number or null>",
+  "purchase_date": "<date in YYYY-MM-DD format or null>",
+  "total_amount": <number or null>,
+  "currency": "<VND, USD, EUR, etc. or null>",
+  "confidence": <number 0.0 to 1.0>,
+  "items": [
+    {"name": "<item name>", "quantity": <number or null>, "price": <number or null>, "total": <number or null>}
+  ]
+}
+Rules:
+- total_amount must be a plain number (no commas, no currency symbols).
+- Extract ALL line items visible.
+- If a field is not visible, use null.
+- confidence: 0.9 if you can read the image clearly, lower if blurry."""
 
     try:
-        claude_data = _extract_invoice_with_claude(best_text)
-        if claude_data:
-            structured = _merge_invoice_data(base_data, claude_data)
+        groq_client = get_groq_client()
+        response = groq_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{media_type};base64,{image_b64}"},
+                        },
+                        {"type": "text", "text": groq_vision_prompt},
+                    ],
+                }
+            ],
+            max_tokens=1200,
+            temperature=0,
+        )
+        content = response.choices[0].message.content or ""
+        vision_data = _extract_json_object(content)
+
+        if vision_data:
+            raw_text = vision_data.pop("raw_text", "") or ""
+            # Normalise & parse numeric fields
+            vision_data["total_amount"] = _parse_amount(vision_data.get("total_amount"))
+            vision_data["purchase_date"] = _parse_date(vision_data.get("purchase_date"))
+            vision_data["currency"] = vision_data.get("currency") or _extract_currency(raw_text) or "VND"
+            claude_confidence = float(vision_data.get("confidence") or 0)
+            if claude_confidence <= 1:
+                claude_confidence *= 100
+            vision_data["confidence"] = round(claude_confidence, 2)
+            if not isinstance(vision_data.get("items"), list):
+                vision_data["items"] = []
+
+            return {
+                "raw_text": raw_text,
+                "confidence": vision_data["confidence"],
+                "extracted": vision_data,
+                "bill": {
+                    "store_name": vision_data.get("store_name"),
+                    "invoice_number": vision_data.get("invoice_number"),
+                    "purchase_date": vision_data.get("purchase_date"),
+                    "total_amount": vision_data.get("total_amount"),
+                    "currency": vision_data.get("currency"),
+                    "confidence_score": vision_data.get("confidence"),
+                    "items": vision_data.get("items", []),
+                },
+                "source": {"filename": filename, "image_type": image_type},
+            }
     except Exception as exc:
-        print(f"Claude invoice extraction failed: {exc}")
+        print(f"Groq Vision OCR failed, falling back to Tesseract: {exc}")
 
-    structured["store_name"] = structured.get("store_name") or base_data.get("store_name")
-    structured["invoice_number"] = structured.get("invoice_number") or base_data.get("invoice_number")
-    structured["purchase_date"] = _parse_date(structured.get("purchase_date")) or base_data.get("purchase_date")
-    structured["total_amount"] = _parse_amount(structured.get("total_amount")) or base_data.get("total_amount")
-    structured["currency"] = structured.get("currency") or base_data.get("currency") or "VND"
-    claude_confidence = float(structured.get("confidence") or 0)
-    if claude_confidence <= 1:
-        claude_confidence *= 100
-    structured["confidence"] = round(max(best_confidence, claude_confidence), 2)
-    structured["items"] = structured.get("items") if isinstance(structured.get("items"), list) else []
+    # --- Fallback: Tesseract (if installed) ---
+    try:
+        image = PILImage.open(io.BytesIO(image_bytes))
+        variants = _build_invoice_variants(image)
+        best_text = ""
+        best_confidence = 0.0
+        best_score = -1
 
-    return {
-        "raw_text": best_text,
-        "confidence": structured["confidence"],
-        "extracted": structured,
-        "bill": {
-            "store_name": structured.get("store_name"),
-            "invoice_number": structured.get("invoice_number"),
-            "purchase_date": structured.get("purchase_date"),
-            "total_amount": structured.get("total_amount"),
-            "currency": structured.get("currency"),
-            "confidence_score": structured.get("confidence"),
-            "items": structured.get("items", []),
-        },
-        "source": {
-            "filename": filename,
-            "image_type": image_type,
-        },
-    }
+        for variant in variants:
+            try:
+                ocr_text = pytesseract.image_to_string(variant, lang="vie+eng", config=OCR_CONFIG)
+                cleaned_text = _clean_ocr_text(ocr_text)
+                confidence = _ocr_confidence(variant)
+                score = _score_ocr_text(cleaned_text, confidence)
+                if score > best_score:
+                    best_text = cleaned_text
+                    best_confidence = confidence
+                    best_score = score
+            except Exception as exc2:
+                print(f"OCR variant failed: {exc2}")
+
+        base_data = _extract_invoice_regex(best_text)
+        structured = base_data
+
+        try:
+            claude_data = _extract_invoice_with_claude(best_text)
+            if claude_data:
+                structured = _merge_invoice_data(base_data, claude_data)
+        except Exception as exc3:
+            print(f"LLM invoice extraction failed: {exc3}")
+
+        structured["store_name"] = structured.get("store_name") or base_data.get("store_name")
+        structured["invoice_number"] = structured.get("invoice_number") or base_data.get("invoice_number")
+        structured["purchase_date"] = _parse_date(structured.get("purchase_date")) or base_data.get("purchase_date")
+        structured["total_amount"] = _parse_amount(structured.get("total_amount")) or base_data.get("total_amount")
+        structured["currency"] = structured.get("currency") or base_data.get("currency") or "VND"
+        claude_confidence = float(structured.get("confidence") or 0)
+        if claude_confidence <= 1:
+            claude_confidence *= 100
+        structured["confidence"] = round(max(best_confidence, claude_confidence), 2)
+        structured["items"] = structured.get("items") if isinstance(structured.get("items"), list) else []
+
+        return {
+            "raw_text": best_text,
+            "confidence": structured["confidence"],
+            "extracted": structured,
+            "bill": {
+                "store_name": structured.get("store_name"),
+                "invoice_number": structured.get("invoice_number"),
+                "purchase_date": structured.get("purchase_date"),
+                "total_amount": structured.get("total_amount"),
+                "currency": structured.get("currency"),
+                "confidence_score": structured.get("confidence"),
+                "items": structured.get("items", []),
+            },
+            "source": {"filename": filename, "image_type": image_type},
+        }
+    except Exception as exc4:
+        print(f"Tesseract OCR also failed: {exc4}")
+        # Return empty result rather than crashing
+        return {
+            "raw_text": "",
+            "confidence": 0,
+            "extracted": {},
+            "bill": {
+                "store_name": None, "invoice_number": None, "purchase_date": None,
+                "total_amount": None, "currency": "VND", "confidence_score": 0, "items": [],
+            },
+            "source": {"filename": filename, "image_type": image_type},
+        }
 
 
 @app.post("/api/invoices/ocr")
@@ -519,6 +641,75 @@ async def invoice_ocr(req: InvoiceOcrRequest):
     try:
         image_bytes = _decode_base64_image(req.image_base64)
         return analyze_invoice_image(image_bytes, filename=req.filename, image_type=req.image_type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class BatchOcrItem(BaseModel):
+    image_base64: str
+    image_type: Optional[str] = None
+    filename: Optional[str] = None
+
+class BatchOcrRequest(BaseModel):
+    images: List[BatchOcrItem]
+
+@app.post("/api/invoices/ocr/batch")
+async def invoice_ocr_batch(req: BatchOcrRequest):
+    """
+    Batch OCR: accepts multiple invoice images, extracts each one,
+    and returns per-invoice results + an aggregated summary.
+    """
+    import concurrent.futures
+
+    def _process_one(item: BatchOcrItem):
+        try:
+            img_bytes = _decode_base64_image(item.image_base64)
+            return analyze_invoice_image(img_bytes, filename=item.filename, image_type=item.image_type)
+        except Exception as exc:
+            print(f"Batch OCR item failed ({item.filename}): {exc}")
+            return {
+                "raw_text": "", "confidence": 0, "extracted": {},
+                "bill": {"store_name": None, "invoice_number": None, "purchase_date": None,
+                         "total_amount": None, "currency": "VND", "confidence_score": 0, "items": []},
+                "source": {"filename": item.filename, "image_type": item.image_type},
+            }
+
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(req.images), 5)) as pool:
+            results = list(pool.map(_process_one, req.images))
+
+        # ── Build aggregated summary ──────────────────────────────────────────
+        currency_totals: dict = {}
+        total_items = 0
+        successful = 0
+
+        for r in results:
+            bill = r.get("bill", {})
+            amount = bill.get("total_amount")
+            currency = bill.get("currency") or "VND"
+            items = bill.get("items") or []
+
+            if amount is not None:
+                currency_totals[currency] = round(currency_totals.get(currency, 0) + float(amount), 2)
+                successful += 1
+            total_items += len(items)
+
+        summary_lines = [f"**Tổng hợp {len(results)} hóa đơn:**"]
+        for cur, total in currency_totals.items():
+            summary_lines.append(f"- **{cur}**: {total:,.0f}")
+        summary_lines.append(f"- Số mặt hàng: **{total_items}**")
+        summary_lines.append(f"- Trích xuất thành công: **{successful}/{len(results)}**")
+
+        return {
+            "invoices": results,
+            "summary": {
+                "count": len(results),
+                "successful": successful,
+                "currency_totals": currency_totals,
+                "total_items": total_items,
+                "summary_text": "\n".join(summary_lines),
+            }
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

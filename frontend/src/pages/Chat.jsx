@@ -209,30 +209,25 @@ export default function Chat() {
     }, [handleSelectConversation]);
 
     // ── Send message ──────────────────────────────────────────────────────────────
-    const handleSendMessage = useCallback(async (content, image = null, document = null, searchMode = false) => {
-        if (!content.trim() && !image && !document) return;
+    const handleSendMessage = useCallback(async (content, image = null, fileDoc = null, searchMode = false) => {
+        // image can now be a single File OR an array of Files
+        const images = Array.isArray(image) ? image : (image ? [image] : []);
+        const isMultiImage = images.length > 1;
 
-        const formData = new FormData();
-        if (content) formData.append("content", content);
-        if (activeConversationId) formData.append("conversation_id", activeConversationId);
-        if (image) formData.append("image", image);
-        if (document) formData.append("file", document);
-        if (searchMode) formData.append("search_mode", "1");
-        if (settings.ui_prefs.model) formData.append("model", settings.ui_prefs.model);
-        if (settings.ui_prefs.contextLength) formData.append("context_length", settings.ui_prefs.contextLength);
-        if (settings.ui_prefs.inferencePrecision) formData.append("precision", settings.ui_prefs.inferencePrecision);
+        if (!content.trim() && images.length === 0 && !fileDoc) return;
 
-        const msgType = document ? "document" : (image ? "bill" : "text");
-
+        const msgType = fileDoc ? "document" : (images.length > 0 ? "bill" : "text");
         const tempId = `temp-${Date.now()}`;
         const tempUserMsg = {
             id: tempId,
             content,
             role: "user",
             type: msgType,
-            image_path: image ? URL.createObjectURL(image) : null,
-            file_path: document ? URL.createObjectURL(document) : null,
-            file_type: document ? document.name.split('.').pop() : null,
+            // For multi-image, store first preview; ChatGPT will render all via image_paths
+            image_path: images[0] ? URL.createObjectURL(images[0]) : null,
+            image_paths: images.map(img => URL.createObjectURL(img)),
+            file_path: fileDoc ? URL.createObjectURL(fileDoc) : null,
+            file_type: fileDoc ? fileDoc.name.split('.').pop() : null,
             created_at: new Date().toISOString(),
             search_mode: searchMode,
         };
@@ -242,12 +237,35 @@ export default function Chat() {
 
         const token = localStorage.getItem("token");
         try {
-            const res = await axios.post(`${API}/messages/send`, formData, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "multipart/form-data",
-                },
-            });
+            let res;
+
+            if (isMultiImage) {
+                // ── Batch multi-image OCR ─────────────────────────────────────
+                const formData = new FormData();
+                if (content) formData.append("content", content);
+                if (activeConversationId) formData.append("conversation_id", activeConversationId);
+                images.forEach(img => formData.append("images[]", img));
+                if (settings.ui_prefs.model) formData.append("model", settings.ui_prefs.model);
+
+                res = await axios.post(`${API}/messages/send-batch`, formData, {
+                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+                });
+            } else {
+                // ── Single image / document / text ────────────────────────────
+                const formData = new FormData();
+                if (content) formData.append("content", content);
+                if (activeConversationId) formData.append("conversation_id", activeConversationId);
+                if (images[0]) formData.append("image", images[0]);
+                if (fileDoc) formData.append("file", fileDoc);
+                if (searchMode) formData.append("search_mode", "1");
+                if (settings.ui_prefs.model) formData.append("model", settings.ui_prefs.model);
+                if (settings.ui_prefs.contextLength) formData.append("context_length", settings.ui_prefs.contextLength);
+                if (settings.ui_prefs.inferencePrecision) formData.append("precision", settings.ui_prefs.inferencePrecision);
+
+                res = await axios.post(`${API}/messages/send`, formData, {
+                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+                });
+            }
 
             const { conversation_id, user_message, bot_message } = res.data;
 
@@ -260,7 +278,7 @@ export default function Chat() {
             });
 
             // Trigger Desktop Notification
-            if (bot_message && settings.toggles.desktopNotifications && document.hidden) {
+            if (bot_message && settings.toggles.desktopNotifications && window.document.hidden) {
                 if ("Notification" in window && Notification.permission === "granted") {
                     new Notification("New message from Architect AI", {
                         body: bot_message.content,
@@ -276,17 +294,14 @@ export default function Chat() {
 
         } catch (err) {
             console.error("sendMessage error:", err);
-
             setMessages(prev => {
                 const withoutTemp = prev.filter(m => m.id !== tempId);
                 return [
                     ...withoutTemp,
-                    // Keep the temp message but update its state if needed, 
-                    // or just show it once and add the error message below.
-                    { ...tempUserMsg, id: `u-${Date.now()}` }, 
+                    { ...tempUserMsg, id: `u-${Date.now()}` },
                     {
                         id: `err-${Date.now()}`,
-                        content: "⚠️ Không thể kết nối đến server. Hãy kiểm tra:\n- Laravel backend (port 8000) đang chạy\n- AI service (port 8001) đang chạy\n- API key đã được cấu hình đúng",
+                        content: "⚠️ Đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại sau.",
                         role: "bot",
                         created_at: new Date().toISOString(),
                     }

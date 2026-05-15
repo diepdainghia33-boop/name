@@ -302,16 +302,77 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
 
                 {msg.bill && renderBillSummary(msg.bill)}
 
-                {hasImage && (
-                    <div className="overflow-hidden rounded-[20px] border border-border/70 bg-background-elevated">
-                        <img
-                            src={msg.image_path}
-                            alt={isBill ? "Uploaded invoice" : "Uploaded image"}
-                            className="max-h-[28rem] w-full object-cover"
-                            loading="lazy"
-                        />
-                    </div>
-                )}
+                {hasImage && (() => {
+                    // Multi-image batch: show all previews in a grid
+                    const paths = msg.image_paths && msg.image_paths.length > 1
+                        ? msg.image_paths
+                        : [msg.image_path];
+                    const isMulti = paths.length > 1;
+
+                    return (
+                        <div className="overflow-hidden rounded-[20px] border border-border/70 bg-background-elevated">
+                            <div className="flex items-center justify-between border-b border-border/70 bg-surface/50 px-4 py-2">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
+                                    {isMulti
+                                        ? `📄 ${paths.length} hóa đơn đã tải lên`
+                                        : (isBill ? "📄 Hóa đơn đã tải lên" : "🖼️ Ảnh đã tải lên")}
+                                </span>
+                                {isMulti && (
+                                    <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-black text-accent border border-accent/20">
+                                        Batch OCR
+                                    </span>
+                                )}
+                            </div>
+
+                            {isMulti ? (
+                                <div className={`grid gap-1 p-2 ${paths.length === 2 ? "grid-cols-2" : paths.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}>
+                                    {paths.map((src, i) => (
+                                        <div key={i} className="relative aspect-square overflow-hidden rounded-[12px] bg-background">
+                                            <img
+                                                src={src}
+                                                alt={`Invoice ${i + 1}`}
+                                                className="h-full w-full object-cover"
+                                                loading="lazy"
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = "none";
+                                                    e.currentTarget.nextElementSibling.style.display = "flex";
+                                                }}
+                                            />
+                                            <div style={{ display: "none" }} className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background-elevated text-text-dim">
+                                                <span className="text-2xl">🧾</span>
+                                                <span className="text-[9px] font-bold">#{i + 1}</span>
+                                            </div>
+                                            <div className="absolute bottom-1 right-1 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                                                #{i + 1}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <>
+                                    <img
+                                        src={paths[0]}
+                                        alt={isBill ? "Uploaded invoice" : "Uploaded image"}
+                                        className="max-h-[28rem] w-full object-contain bg-background-elevated"
+                                        loading="lazy"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = "none";
+                                            const fallback = e.currentTarget.nextElementSibling;
+                                            if (fallback) fallback.style.display = "flex";
+                                        }}
+                                    />
+                                    <div style={{ display: "none" }} className="flex flex-col items-center justify-center gap-3 py-10 text-text-dim">
+                                        <span className="text-4xl">🧾</span>
+                                        <span className="text-xs font-bold uppercase tracking-[0.2em]">
+                                            {isBill ? "Hóa đơn đã được xử lý" : "Ảnh đã được tải lên"}
+                                        </span>
+                                        <span className="text-[10px] text-text-dim/60">Xem kết quả trích xuất bên trên</span>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    );
+                })()}
 
                 {msg.content ? (
                     <div className={hasImage ? "mt-3" : ""}>

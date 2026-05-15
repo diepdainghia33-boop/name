@@ -68,7 +68,8 @@ export default function InputBar({ onSend, isLoading, sendOnEnter = true }) {
         const images = selectedFiles.filter((f) => f.type === "image").map((f) => f.file);
         const documents = selectedFiles.filter((f) => f.type !== "image").map((f) => f.file);
 
-        onSend(trimmed, images.length > 0 ? images[0] : null, documents.length > 0 ? documents[0] : null, searchMode);
+        // Pass all images array for multi-image OCR support
+        onSend(trimmed, images.length > 0 ? images : null, documents.length > 0 ? documents[0] : null, searchMode);
 
         setInputValue("");
         setSelectedFiles([]);
@@ -111,7 +112,9 @@ export default function InputBar({ onSend, isLoading, sendOnEnter = true }) {
     const getPlaceholder = () => {
         if (isLoading) return "AI is replying...";
         if (selectedFiles.some((f) => f.type === "pdf" || f.type === "excel")) return "Add a note for the file...";
-        if (selectedFiles.some((f) => f.type === "image")) return "Describe the image...";
+        const imageCount = selectedFiles.filter(f => f.type === "image").length;
+        if (imageCount > 1) return `${imageCount} hóa đơn đã chọn — thêm ghi chú hoặc nhấn Send để trích xuất tất cả...`;
+        if (imageCount === 1) return "Thêm nội dung mô tả hóa đơn (tuỳ chọn)...";
         if (searchMode) return "Search the web...";
         return "Message Architect AI... (Enter to send, Shift+Enter for a new line)";
     };

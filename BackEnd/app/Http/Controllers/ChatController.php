@@ -350,6 +350,161 @@ class ChatController extends Controller
         ]);
     }
 
+    public function sendBatchMessage(Request $request)
+    {
+        $request->validate([
+            'images'          => 'required|array|min:1|max:10',
+            'images.*'        => 'required|image|mimes:jpeg,png,jpg,gif|max:5120',
+            'content'         => 'nullable|string|max:2000',
+            'conversation_id' => 'nullable|integer',
+        ]);
+
+        $userId         = Auth::id();
+        $conversationId = $request->conversation_id;
+        $userNote       = $request->input('content', '');
+
+        // ── Resolve or create conversation ────────────────────────────────────
+        if ($conversationId) {
+            $conversation = Conversation::where('id', $conversationId)
+                ->where('user_id', $userId)
+                ->firstOrFail();
+        } else {
+            $title = 'Batch OCR – ' . count($request->file('images')) . ' hóa đơn';
+            $conversation   = Conversation::create(['user_id' => $userId, 'title' => $title]);
+            $conversationId = $conversation->id;
+        }
+
+        // ── Upload images & encode as base64 for AI service ───────────────────
+        $imagePayloads = [];
+        $imagePaths    = [];
+
+        foreach ($request->file('images') as $imageFile) {
+            $path      = $imageFile->store('chat_images', 'public');
+            $publicUrl = asset('storage/' . $path);
+            $imagePaths[] = $publicUrl;
+
+            $ext = strtolower($imageFile->getClientOriginalExtension() ?: 'jpg');
+            $imagePayloads[] = [
+                'image_base64' => base64_encode(file_get_contents($imageFile->getRealPath())),
+                'image_type'   => $ext,
+                'filename'     => $imageFile->getClientOriginalName(),
+            ];
+        }
+
+        // ── Save user message ──────────────────────────────────────────────────
+        $userMessage = Message::create([
+            'conversation_id' => $conversationId,
+            'content'         => $userNote ?: 'Phân tích ' . count($imagePaths) . ' hóa đơn',
+            'role'            => 'user',
+            'type'            => 'bill',
+            'image_path'      => $imagePaths[0] ?? null,
+        ]);
+
+        // ── Call AI batch OCR endpoint ─────────────────────────────────────────
+        $batchResult = null;
+        try {
+            $response = Http::timeout(120)->post("{$this->aiServiceUrl}/api/invoices/ocr/batch", [
+                'images' => $imagePayloads,
+            ]);
+            if ($response->successful()) {
+                $batchResult = $response->json();
+            } else {
+                Log::warning('Batch OCR returned non-2xx', ['status' => $response->status()]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Batch OCR unreachable: ' . $e->getMessage());
+        }
+
+        // ── Persist bills & build bot response text ────────────────────────────
+        $botText = '';
+
+        if ($batchResult && isset($batchResult['invoices'])) {
+            $invoices = $batchResult['invoices'];
+            $summary  = $batchResult['summary'] ?? [];
+
+            // Save each bill to DB
+            foreach ($invoices as $idx => $invoiceResult) {
+                $billData = $invoiceResult['bill'] ?? [];
+                $bill = Bill::create([
+                    'user_id'          => $userId,
+                    'file_url'         => $imagePaths[$idx] ?? null,
+                    'invoice_number'   => data_get($billData, 'invoice_number'),
+                    'store_name'       => data_get($billData, 'store_name'),
+                    'purchase_date'    => data_get($billData, 'purchase_date'),
+                    'total_amount'     => data_get($billData, 'total_amount'),
+                    'currency'         => data_get($billData, 'currency', 'VND'),
+                    'status'           => 'done',
+                    'ocr_text'         => $invoiceResult['raw_text'] ?? null,
+                    'extracted_data'   => $invoiceResult['extracted'] ?? null,
+                    'confidence_score' => data_get($billData, 'confidence_score'),
+                ]);
+
+                $items = data_get($billData, 'items', []);
+                if (is_array($items)) {
+                    foreach ($items as $item) {
+                        $name = data_get($item, 'name');
+                        if (!$name) continue;
+                        BillItem::create([
+                            'bill_id'  => $bill->id,
+                            'name'     => $name,
+                            'quantity' => max(1, (int)(data_get($item, 'quantity', 1) ?: 1)),
+                            'price'    => data_get($item, 'price', 0) ?: 0,
+                            'total'    => data_get($item, 'total'),
+                        ]);
+                    }
+                }
+            }
+
+            // Build readable summary text
+            $lines = ["## 📊 Tổng hợp " . count($invoices) . " hóa đơn\n"];
+
+            foreach ($invoices as $idx => $invoiceResult) {
+                $b = $invoiceResult['bill'] ?? [];
+                $store  = $b['store_name']    ?? ('Hóa đơn #' . ($idx + 1));
+                $total  = $b['total_amount']  !== null ? number_format((float)$b['total_amount'], 0, ',', '.') : '—';
+                $cur    = $b['currency']      ?? 'VND';
+                $date   = $b['purchase_date'] ?? '—';
+                $conf   = isset($b['confidence_score']) ? round((float)$b['confidence_score']) . '%' : '—';
+                $itemCt = count($b['items'] ?? []);
+                $lines[] = "**" . ($idx + 1) . ". $store**";
+                $lines[] = "- Ngày: $date | Tổng: $total $cur | $itemCt mặt hàng | Độ tin cậy: $conf";
+            }
+
+            $lines[] = "\n---";
+            $currencyTotals = $summary['currency_totals'] ?? [];
+            foreach ($currencyTotals as $cur => $total) {
+                $lines[] = "**Tổng " . $cur . ":** " . number_format($total, 0, ',', '.');
+            }
+            $totalItems = $summary['total_items'] ?? 0;
+            $successful = $summary['successful'] ?? 0;
+            $lines[] = "**Tổng số mặt hàng:** $totalItems | **Thành công:** $successful/" . count($invoices);
+
+            if ($userNote) {
+                $lines[] = "\n> Ghi chú: $userNote";
+            }
+
+            $botText = implode("\n", $lines);
+        } else {
+            $botText = "⚠️ Không thể trích xuất dữ liệu từ các hóa đơn. Vui lòng kiểm tra AI service (port 8001) đang chạy.";
+        }
+
+        // ── Save bot message ───────────────────────────────────────────────────
+        $botMessage = Message::create([
+            'conversation_id'  => $conversationId,
+            'content'          => $botText,
+            'role'             => 'bot',
+            'type'             => 'text',
+            'tokens'           => 0,
+            'response_time_ms' => null,
+        ]);
+
+        return response()->json([
+            'conversation_id' => $conversationId,
+            'user_message'    => $userMessage,
+            'bot_message'     => $botMessage,
+        ]);
+    }
+
     private function isInvoiceMonthlyStatsQuery(string $content): bool
     {
         $text = $this->normalizeQueryText($content);
