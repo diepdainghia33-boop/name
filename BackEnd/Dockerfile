@@ -32,6 +32,10 @@ RUN composer install --no-interaction --no-plugins --no-scripts
 # Set permissions
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
+# Copy startup script
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
 EXPOSE 8000
 
-CMD php artisan serve --host=0.0.0.0 --port=8000
+CMD ["/bin/bash", "/usr/local/bin/start.sh"]
