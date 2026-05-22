@@ -116,39 +116,39 @@ export default function Chart() {
             .filter(Boolean)
         : [];
 
-    if (loading || !currentData || currentData.length === 0 || (activeMetric === "responseTime" && numericPoints.length === 0)) {
+    const hasSeries = Array.isArray(currentData) && currentData.length > 0;
+    const missingResponseTimes = activeMetric === "responseTime" && numericPoints.length === 0;
+
+    if (loading) {
         return (
             <div className="col-span-12 lg:col-span-8 app-panel-strong p-6 md:p-8">
-                <div className="flex items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h4 className="font-display text-lg font-bold text-text">Analytics Trends</h4>
-                        <p className="mt-1 text-xs uppercase tracking-[0.28em] text-text-dim">
-                            {timeRange === "24h" ? "Hourly" : timeRange === "7d" ? "Last 7 days" : "Last 30 days"}
-                        </p>
-                    </div>
-                    <div className="flex gap-2">
-                        {timeRanges.map((range) => (
-                            <button
-                                key={range.value}
-                                onClick={() => setTimeRange(range.value)}
-                                className={`rounded-full px-3 py-1.5 text-[0.625rem] font-bold uppercase tracking-[0.2em] transition ${timeRange === range.value
-                                    ? "bg-accent/15 text-accent"
-                                    : "bg-surface text-text-dim hover:text-text"
-                                    }`}
-                            >
-                                {range.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
                 <div className="flex h-56 items-center justify-center rounded-[28px] border border-dashed border-border/70 bg-background-elevated/60">
                     <div className="text-center">
                         <div className="mx-auto mb-4 h-10 w-10 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-                        <p className="text-sm text-text-muted">
-                            {error || "Loading analytics..."}
-                        </p>
+                        <p className="text-sm text-text-muted">Loading analytics...</p>
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !hasSeries) {
+        return (
+            <div className="col-span-12 lg:col-span-8 app-panel-strong p-6 md:p-8">
+                <div className="flex h-56 items-center justify-center rounded-[28px] border border-dashed border-border/70 bg-background-elevated/60">
+                    <p className="text-sm text-text-muted">
+                        {error || "Chưa có dữ liệu analytics. Hãy bắt đầu một cuộc trò chuyện."}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (missingResponseTimes) {
+        return (
+            <div className="col-span-12 lg:col-span-8 app-panel-strong p-6 md:p-8">
+                <div className="flex h-56 items-center justify-center rounded-[28px] border border-dashed border-border/70 bg-background-elevated/60">
+                    <p className="text-sm text-text-muted">Chưa có dữ liệu thời gian phản hồi. Gửi tin nhắn để thu thập metrics.</p>
                 </div>
             </div>
         );

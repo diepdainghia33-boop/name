@@ -14,6 +14,7 @@ import SignupPage from "./pages/Signup";
 import ResetPassword from "./pages/ResetPassword";
 import Analytics from "./pages/Analytics";
 import SettingsPage from "./pages/SettingsPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import HeroSection from "./components/Home/HeroSection";
 import SocialProofSection from "./components/Home/SocialProofSection";
@@ -94,10 +95,10 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

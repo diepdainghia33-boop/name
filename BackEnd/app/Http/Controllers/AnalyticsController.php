@@ -11,8 +11,12 @@ class AnalyticsController extends Controller
 {
     public function getTrends(Request $request)
     {
-        $daysCount = $request->query('days', 7);
+        $daysCount = max(1, min(30, (int) $request->query('days', 7)));
         $userId = Auth::id();
+
+        if (!$userId) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
 
         $data = [];
         $responseTimeData = [];
@@ -73,8 +77,8 @@ class AnalyticsController extends Controller
         $conversations = Conversation::where('user_id', $userId)->pluck('id');
         $intentCounts = \App\Models\Message::whereIn('conversation_id', $conversations)
             ->whereNotNull('type')
+            ->selectRaw('type, COUNT(*) as count')
             ->groupBy('type')
-            ->selectRaw('type, count(*) as count')
             ->get();
 
         $intents = [];
@@ -102,19 +106,6 @@ class AnalyticsController extends Controller
             ? round(max(0, min(100, 100 - max(0, ($avgLatency - 1) * 20))), 1)
             : null;
         
-        // Example: Trigger warning if tokens for the period are high
-        $totalTokens = array_sum(array_column($tokenData, 'value'));
-        if ($totalTokens > 50000) {
-            \App\Models\Notification::create([
-                'user_id' => $userId,
-                'title' => 'High Token Usage',
-                'message' => 'Your system has consumed over 50,000 tokens in the last 7 days.',
-                'type' => 'warning',
-                'icon' => 'warning',
-                'is_read' => false
-            ]);
-        }
-
         return response()->json([
             'data' => $data,
             'responseTimeData' => $responseTimeData,

@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
 import { MessageSquare, Smile, Zap, Clock } from "lucide-react";
-import axios from "axios";
 import { api } from "../../api/axios";
 import { motion } from "framer-motion";
-
-const AI_SERVICE_URL = process.env.REACT_APP_AI_SERVICE_URL || "http://127.0.0.1:8001";
 
 export default function Stats() {
     const [stats, setStats] = useState({
@@ -19,16 +16,16 @@ export default function Stats() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const [laravelRes, chatbotRes] = await Promise.all([
-                    api.get("/dashboard"),
-                    axios.get(`${AI_SERVICE_URL}/analytics/chatbot`).catch(() => ({ data: {} })),
+                const [dashboardRes, analyticsRes] = await Promise.all([
+                    api.get("/dashboard", { timeout: 15000 }),
+                    api.get("/analytics?days=7", { timeout: 15000 }).catch(() => ({ data: {} })),
                 ]);
 
                 setStats((prev) => {
                     const next = { ...prev };
 
-                    if (laravelRes.data?.metrics) {
-                        const m = laravelRes.data.metrics;
+                    if (dashboardRes.data?.metrics) {
+                        const m = dashboardRes.data.metrics;
                         next.totalConversations = m.conversations || 0;
                         next.totalMessages = m.total_messages || 0;
                         if (m.satisfaction !== undefined) next.satisfaction = m.satisfaction;
@@ -36,11 +33,13 @@ export default function Stats() {
                         if (m.latency !== undefined) next.responseTime = m.latency;
                     }
 
-                    if (chatbotRes.data?.stats) {
-                        const cs = chatbotRes.data.stats;
-                        if (cs.tokens_used != null && !Number.isNaN(Number(cs.tokens_used))) {
-                            next.tokensUsed = Number(cs.tokens_used);
-                        }
+                    const analytics = analyticsRes.data || {};
+                    if (Array.isArray(analytics.tokenData)) {
+                        const tokenSum = analytics.tokenData.reduce((sum, v) => sum + (Number(v) || 0), 0);
+                        if (tokenSum > 0) next.tokensUsed = tokenSum;
+                    }
+                    if (analytics.latency !== undefined && analytics.latency !== null) {
+                        next.responseTime = analytics.latency;
                     }
 
                     return next;
