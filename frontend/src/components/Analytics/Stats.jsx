@@ -4,6 +4,8 @@ import axios from "axios";
 import { api } from "../../api/axios";
 import { motion } from "framer-motion";
 
+const AI_SERVICE_URL = process.env.REACT_APP_AI_SERVICE_URL || "http://127.0.0.1:8001";
+
 export default function Stats() {
     const [stats, setStats] = useState({
         totalConversations: 0,
@@ -19,7 +21,7 @@ export default function Stats() {
             try {
                 const [laravelRes, chatbotRes] = await Promise.all([
                     api.get("/dashboard"),
-                    axios.get("http://127.0.0.1:8001/analytics/chatbot").catch(() => ({ data: {} })),
+                    axios.get(`${AI_SERVICE_URL}/analytics/chatbot`).catch(() => ({ data: {} })),
                 ]);
 
                 setStats((prev) => {

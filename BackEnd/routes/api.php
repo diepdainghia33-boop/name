@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::options('/{path}', fn () => response('', 204))->where('path', '.*');
+
 Route::get('/test', function () {
     return response()->json([
         'message' => 'Laravel OK'

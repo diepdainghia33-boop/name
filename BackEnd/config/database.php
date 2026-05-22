@@ -3,6 +3,22 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+$mysqlSslOptions = [];
+if (extension_loaded('pdo_mysql')) {
+    $sslCaKey = PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA;
+    $sslCa = env('MYSQL_ATTR_SSL_CA');
+    $useSsl = filter_var(
+        env('DB_SSL', str_contains((string) env('DB_HOST', ''), 'tidbcloud.com')),
+        FILTER_VALIDATE_BOOL
+    );
+
+    if ($sslCa) {
+        $mysqlSslOptions[$sslCaKey] = $sslCa;
+    } elseif ($useSsl) {
+        $mysqlSslOptions[$sslCaKey] = '/etc/ssl/certs/ca-certificates.crt';
+    }
+}
+
 return [
 
     /*
@@ -59,9 +75,7 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => $mysqlSslOptions,
         ],
 
         'mariadb' => [
@@ -79,9 +93,7 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => $mysqlSslOptions,
         ],
 
         'pgsql' => [
@@ -145,7 +157,7 @@ return [
 
     'redis' => [
 
-        'client' => env('REDIS_CLIENT', 'phpredis'),
+        'client' => env('REDIS_CLIENT', env('REDIS_URL') ? 'predis' : 'phpredis'),
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),

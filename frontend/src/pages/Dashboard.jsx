@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Clock3, Layers3, ShieldCheck, Sparkles, X } from "lucide-react";
-import axios from "axios";
+import { api } from "../api/axios";
 import SidebarLeft from "../components/Dashboard/SidebarLeft";
 import Metrics from "../components/Dashboard/Metrics";
 import BlueprintCard from "../components/Dashboard/BlueprintCard";
@@ -88,13 +88,8 @@ export default function Dashboard() {
 
     const fetchDashboardData = async () => {
         try {
-            const token = localStorage.getItem("token");
-
             const [dashboardRes] = await Promise.allSettled([
-                axios.get("http://127.0.0.1:8000/api/dashboard", {
-                    headers: { Authorization: `Bearer ${token}` },
-                    timeout: 4000
-                })
+                api.get("/dashboard", { timeout: 4000 })
             ]);
 
             const dashboardData =
@@ -139,12 +134,7 @@ export default function Dashboard() {
 
     const addLog = async (message, type = "info") => {
         try {
-            const token = localStorage.getItem("token");
-            const response = await axios.post(
-                "http://127.0.0.1:8000/api/dashboard/log",
-                { message, type },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const response = await api.post("/dashboard/log", { message, type });
 
             const newLog = {
                 id: response.data.id,

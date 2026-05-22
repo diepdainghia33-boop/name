@@ -19,9 +19,25 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000', 'http://localhost:8000'],
+    'allowed_origins' => filter_var(env('CORS_ALLOW_ALL', false), FILTER_VALIDATE_BOOL)
+        ? ['*']
+        : array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env(
+                'CORS_ALLOWED_ORIGINS',
+                'http://localhost:3000,http://localhost:8000,https://chat-bot-fe49e.web.app,https://chat-bot-fe49e.firebaseapp.com'
+            ))
+        ))),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => array_values(array_filter(array_merge(
+        [
+            '#^https://[a-z0-9-]+\.web\.app$#',
+            '#^https://[a-z0-9-]+\.firebaseapp\.com$#',
+        ],
+        env('CORS_ALLOWED_ORIGINS_PATTERNS')
+            ? array_map('trim', explode(',', (string) env('CORS_ALLOWED_ORIGINS_PATTERNS')))
+            : []
+    ))),
 
     'allowed_headers' => ['*'],
 

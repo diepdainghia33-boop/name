@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import axios from "axios";
+import { api } from "../api/axios";
 import SidebarLeft from "../components/Dashboard/SidebarLeft";
 import Header from "../components/Chat/Header";
 import ChatGPT from "../components/Chat/ChatGPT";
@@ -10,9 +10,6 @@ import RightPanel from "../components/Chat/RightPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
 import logo from "../assets/logo.png";
-
-
-const API = "http://127.0.0.1:8000/api";
 
 // Debounce hook
 function useDebounce(value, delay) {
@@ -235,7 +232,6 @@ export default function Chat() {
         setMessages(prev => prev.filter(m => m.id !== "welcome").concat(tempUserMsg));
         setIsLoading(true);
 
-        const token = localStorage.getItem("token");
         try {
             let res;
 
@@ -247,9 +243,7 @@ export default function Chat() {
                 images.forEach(img => formData.append("images[]", img));
                 if (settings.ui_prefs.model) formData.append("model", settings.ui_prefs.model);
 
-                res = await axios.post(`${API}/messages/send-batch`, formData, {
-                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
-                });
+                res = await api.post("/messages/send-batch", formData);
             } else {
                 // ── Single image / document / text ────────────────────────────
                 const formData = new FormData();
@@ -262,9 +256,7 @@ export default function Chat() {
                 if (settings.ui_prefs.contextLength) formData.append("context_length", settings.ui_prefs.contextLength);
                 if (settings.ui_prefs.inferencePrecision) formData.append("precision", settings.ui_prefs.inferencePrecision);
 
-                res = await axios.post(`${API}/messages/send`, formData, {
-                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
-                });
+                res = await api.post("/messages/send", formData);
             }
 
             const { conversation_id, user_message, bot_message } = res.data;
