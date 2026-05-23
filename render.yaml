@@ -45,3 +45,15 @@ services:
         sync: false
       - key: REDIS_URL
         sync: false
+
+  - type: web
+    name: chatid-ai
+    runtime: docker
+    dockerfilePath: ./ai_service/Dockerfile
+    dockerContext: ./ai_service
+    plan: free
+    envVars:
+      - key: GROQ_API_KEY
+        value: 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
+      - key: ANTHROPIC_API_KEY
+        value: ""
