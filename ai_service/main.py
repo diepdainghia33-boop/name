@@ -19,6 +19,12 @@ load_dotenv()
 
 app = FastAPI(title="Architect AI Service")
 
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "chatid-ai"}
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,13 +34,34 @@ app.add_middleware(
 )
 
 def get_db():
-    try:
-        return mysql.connector.connect(
-            host="127.0.0.1", user="root", password="",
-            database="laravel", connect_timeout=2
-        )
-    except:
+    host = os.getenv("DB_HOST")
+    if not host:
         return None
+    try:
+        config = {
+            "host": host,
+            "port": int(os.getenv("DB_PORT", "3306")),
+            "user": os.getenv("DB_USERNAME", "root"),
+            "password": os.getenv("DB_PASSWORD", ""),
+            "database": os.getenv("DB_DATABASE", "test"),
+            "connect_timeout": 5,
+        }
+        ssl_ca = os.getenv("MYSQL_ATTR_SSL_CA")
+        if ssl_ca:
+            config["ssl_ca"] = ssl_ca
+        return mysql.connector.connect(**config)
+    except Exception:
+        return None
+
+
+def get_redis_client():
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        return redis.from_url(redis_url, socket_connect_timeout=2)
+    host = os.getenv("REDIS_HOST", "127.0.0.1")
+    port = int(os.getenv("REDIS_PORT", "6379"))
+    password = os.getenv("REDIS_PASSWORD") or None
+    return redis.Redis(host=host, port=port, password=password, socket_connect_timeout=2)
 
 def get_system_setting(key, default=None):
     db = get_db()
@@ -51,7 +78,9 @@ def get_system_setting(key, default=None):
         return default
 
 def get_groq_client():
-    key = get_system_setting("GROQ_API_KEY", os.getenv("GROQ_API_KEY", "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"))
+    key = get_system_setting("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+    if not key:
+        raise HTTPException(status_code=503, detail="GROQ_API_KEY is not configured.")
     return Groq(api_key=key)
 
 def get_anthropic_client():
@@ -731,10 +760,10 @@ def get_stats():
         except:
             pass
     try:
-        r = redis.Redis(host="localhost", port=6379, socket_connect_timeout=1)
+        r = get_redis_client()
         if r.ping():
             health_score += 25
-    except:
+    except Exception:
         pass
     return {
         "cpu_speed": get_cpu_speed(),

@@ -1,4 +1,4 @@
-# Render Blueprint — backend ChatID (Docker)
+# Render Blueprint — ChatID stack
 # https://render.com/docs/blueprint-spec
 services:
   - type: web
@@ -52,8 +52,25 @@ services:
     dockerfilePath: ./ai_service/Dockerfile
     dockerContext: ./ai_service
     plan: free
+    healthCheckPath: /health
     envVars:
+      - key: DISABLE_TRANSFORMERS
+        value: "1"
       - key: GROQ_API_KEY
-        value: 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
+        sync: false
       - key: ANTHROPIC_API_KEY
-        value: ""
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "4000"
+      - key: DB_DATABASE
+        value: test
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: MYSQL_ATTR_SSL_CA
+        value: /etc/ssl/certs/ca-certificates.crt
+      - key: REDIS_URL
+        sync: false
