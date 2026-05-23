@@ -301,10 +301,17 @@ class ChatController extends Controller
                 $aiTokens = $aiData['tokens']   ?? 0;
                 $aiModel  = $aiData['model']    ?? $aiModel;
             } else {
-                Log::warning('AI service returned non-2xx', ['status' => $aiResponse->status()]);
+                Log::warning('AI service returned non-2xx', [
+                    'status' => $aiResponse->status(),
+                    'url' => $this->aiServiceUrl,
+                    'body' => $aiResponse->body(),
+                ]);
             }
         } catch (\Exception $e) {
-            Log::error('AI service unreachable: ' . $e->getMessage());
+            Log::error('AI service unreachable', [
+                'message' => $e->getMessage(),
+                'url' => $this->aiServiceUrl,
+            ]);
         } finally {
             $responseTimeMs = (int) max(1, round((microtime(true) - $aiRequestStartedAt) * 1000));
         }
@@ -318,7 +325,7 @@ class ChatController extends Controller
             } elseif ($imagePath) {
                 $aiText = "Tôi đã nhận được hình ảnh của bạn. Xin lỗi, dịch vụ AI đang bận — hãy thử lại sau.";
             } else {
-                $aiText = "Xin lỗi, dịch vụ AI đang tạm thời không khả dụng. Hãy đảm bảo server AI (port 8001) đang chạy.";
+                $aiText = "Xin lỗi, dịch vụ AI đang tạm thời không khả dụng. Vui lòng thử lại sau vài giây.";
             }
         }
 

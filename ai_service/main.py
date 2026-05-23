@@ -94,7 +94,9 @@ def get_groq_client():
     return Groq(api_key=key)
 
 def get_anthropic_client():
-    key = get_system_setting("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY"))
+    key = get_system_setting("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+    if not key:
+        return None
     return Anthropic(api_key=key)
 
 # We'll initialize them in the request handlers instead of globally
@@ -929,6 +931,9 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     history: List[ChatMessage] = []
     system_prompt: Optional[str] = None
+    model: Optional[str] = None
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
@@ -947,11 +952,12 @@ async def chat(req: ChatRequest):
             if msg.content and msg.content.strip():
                 groq_messages.append({"role": role, "content": msg.content})
 
+        model = req.model or "llama-3.3-70b-versatile"
         completion = get_groq_client().chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=model,
             messages=groq_messages,
-            max_tokens=2048,
-            temperature=0.7,
+            max_tokens=req.max_tokens or 2048,
+            temperature=req.temperature if req.temperature is not None else 0.7,
         )
 
         ai_text = completion.choices[0].message.content
@@ -960,7 +966,7 @@ async def chat(req: ChatRequest):
         return {
             "content": ai_text,
             "tokens": tokens_used,
-            "model": "llama-3.3-70b-versatile"
+            "model": model
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -982,6 +988,10 @@ async def chat_v2(req: ChatRequestV2):
     - Web search via browser tool
     """
     try:
+        anthropic = get_anthropic_client()
+        if not anthropic:
+            raise RuntimeError("ANTHROPIC_API_KEY not configured — using Groq fallback")
+
         system = req.system_prompt or SYSTEM_PROMPT
 
         # Build messages for Claude
@@ -1069,7 +1079,7 @@ async def chat_v2(req: ChatRequestV2):
         if tools:
             extra_kwargs["tools"] = tools
 
-        response = get_anthropic_client().messages.create(
+        response = anthropic.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=2048,
             messages=messages,
