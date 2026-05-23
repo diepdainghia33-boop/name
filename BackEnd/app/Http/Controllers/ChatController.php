@@ -492,7 +492,7 @@ class ChatController extends Controller
 
             $botText = implode("\n", $lines);
         } else {
-            $botText = "⚠️ Không thể trích xuất dữ liệu từ các hóa đơn. Vui lòng kiểm tra AI service (port 8001) đang chạy.";
+            $botText = "⚠️ Không thể trích xuất dữ liệu từ các hóa đơn. Vui lòng thử lại sau.";
         }
 
         // ── Save bot message ───────────────────────────────────────────────────
