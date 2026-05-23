@@ -20,6 +20,16 @@ load_dotenv()
 app = FastAPI(title="Architect AI Service")
 
 
+@app.get("/")
+def root():
+    return {
+        "service": "chatid-ai",
+        "status": "ok",
+        "health": "/health",
+        "docs": "/docs",
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "chatid-ai"}
