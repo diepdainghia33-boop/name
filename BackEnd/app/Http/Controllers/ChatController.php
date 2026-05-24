@@ -56,6 +56,26 @@ class ChatController extends Controller
 
     public function sendMessage(Request $request)
     {
+        try {
+            return $this->processSendMessage($request);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Cuộc hội thoại không tồn tại.'], 404);
+        } catch (\Exception $e) {
+            Log::error('sendMessage failed', [
+                'message' => $e->getMessage(),
+                'user_id' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'message' => 'Không thể gửi tin nhắn. Vui lòng thử lại sau.',
+            ], 500);
+        }
+    }
+
+    private function processSendMessage(Request $request)
+    {
         $request->validate([
             'content'         => 'nullable|string|max:10000',
             'conversation_id' => 'nullable|integer',

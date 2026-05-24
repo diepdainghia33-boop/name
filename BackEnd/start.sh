@@ -41,6 +41,10 @@ else
     echo ">>> WARNING: migrations failed. Check DB_DATABASE, user permissions, and TiDB connection."
 fi
 
+echo ">>> Ensuring storage is writable and linked..."
+mkdir -p storage/app/public/chat_images storage/app/public/chat_files
+php artisan storage:link 2>/dev/null || true
+
 echo ">>> Clearing config cache..."
 php artisan config:clear
 

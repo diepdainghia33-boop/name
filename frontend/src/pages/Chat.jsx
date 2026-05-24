@@ -6,6 +6,7 @@ import ChatGPT from "../components/Chat/ChatGPT";
 import InputBar from "../components/Chat/InputBar";
 import { settingsApi } from "../api/settings.api";
 import { chatApi } from "../api/chat.api";
+import { getApiErrorMessage } from "../utils/apiError";
 import RightPanel from "../components/Chat/RightPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
@@ -243,7 +244,7 @@ export default function Chat() {
                 images.forEach(img => formData.append("images[]", img));
                 if (settings.ui_prefs.model) formData.append("model", settings.ui_prefs.model);
 
-                res = await api.post("/messages/send-batch", formData);
+                res = await api.post("/messages/send-batch", formData, { timeout: 120000 });
             } else {
                 // ── Single image / document / text ────────────────────────────
                 const formData = new FormData();
@@ -256,7 +257,7 @@ export default function Chat() {
                 if (settings.ui_prefs.contextLength) formData.append("context_length", settings.ui_prefs.contextLength);
                 if (settings.ui_prefs.inferencePrecision) formData.append("precision", settings.ui_prefs.inferencePrecision);
 
-                res = await api.post("/messages/send", formData);
+                res = await api.post("/messages/send", formData, { timeout: 120000 });
             }
 
             const { conversation_id, user_message, bot_message } = res.data;
@@ -293,7 +294,7 @@ export default function Chat() {
                     { ...tempUserMsg, id: `u-${Date.now()}` },
                     {
                         id: `err-${Date.now()}`,
-                        content: "⚠️ Đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại sau.",
+                        content: `⚠️ ${getApiErrorMessage(err, "Đã xảy ra lỗi khi gửi tin nhắn. Vui lòng thử lại sau.")}`,
                         role: "bot",
                         created_at: new Date().toISOString(),
                     }
