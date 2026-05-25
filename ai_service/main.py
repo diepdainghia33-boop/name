@@ -478,11 +478,11 @@ def _extract_invoice_with_claude(ocr_text: str):
         except Exception as exc:
             print(f"Claude extraction failed, falling back to Groq: {exc}")
 
-    # --- Fallback: Groq (FIXED: using llama-3.1-70b-versatile) ---
+    # --- Fallback: Groq (FIXED: using llama-3.3-70b-versatile) ---
     try:
         groq_client = get_groq_client()
         completion = groq_client.chat.completions.create(
-            model="llama-3.1-70b-versatile",  # ✅ FIXED: replaced deprecated model
+            model="llama-3.3-70b-versatile",  # ✅ FIXED: using latest stable model
             messages=[
                 {"role": "system", "content": "You are an invoice data extraction engine. Return only valid JSON matching the requested schema exactly. No markdown, no commentary."},
                 {"role": "user", "content": prompt},
@@ -959,8 +959,8 @@ async def chat(req: ChatRequest):
                 if msg.content and msg.content.strip():
                     groq_messages.append({"role": role, "content": msg.content})
 
-        # ✅ FIXED: Replaced deprecated model with current supported model
-        current_default_model = "llama-3.1-70b-versatile"
+        # ✅ FIXED: Using llama-3.3-70b-versatile (latest stable model)
+        current_default_model = "llama-3.3-70b-versatile"
         model = req.model if req.model else current_default_model
         
         # LỌC MODEL KHÔNG HỢP LỆ CHO GROQ:
@@ -969,7 +969,7 @@ async def chat(req: ChatRequest):
             model = current_default_model
             
         # Ép hạ max_tokens xuống nếu bạn đang bị dính lỗi timeout 5s từ Laravel gửi sang
-        max_tokens = req.max_tokens or 1024  # Thử hạ từ 2048 xuống 1024 để AI phản hồi nhanh hơn
+        max_tokens = req.max_tokens or 1024
 
         # Gọi API của Groq
         try:
@@ -980,7 +980,7 @@ async def chat(req: ChatRequest):
                 temperature=req.temperature if req.temperature is not None else 0.7,
             )
         except Exception as e:
-            if "does not exist" in str(e) or "model_not_found" in str(e):
+            if "does not exist" in str(e) or "model_not_found" in str(e) or "decommissioned" in str(e):
                 print(f"==> Fallback: Model {model} not found, using {current_default_model}")
                 model = current_default_model
                 completion = get_groq_client().chat.completions.create(
@@ -1153,9 +1153,9 @@ async def chat_v2(req: ChatRequestV2):
                 if msg.content and msg.content.strip():
                     groq_messages.append({"role": role, "content": msg.content})
 
-            # ✅ FIXED: Using new model for fallback
+            # ✅ FIXED: Using llama-3.3-70b-versatile for fallback
             completion = get_groq_client().chat.completions.create(
-                model="llama-3.1-70b-versatile",  # ✅ FIXED: replaced deprecated model
+                model="llama-3.3-70b-versatile",  # ✅ FIXED: latest stable model
                 messages=groq_messages,
                 max_tokens=2048,
                 temperature=0.7,
@@ -1164,7 +1164,7 @@ async def chat_v2(req: ChatRequestV2):
             return {
                 "content": completion.choices[0].message.content,
                 "tokens": completion.usage.total_tokens,
-                "model": "llama-3.1-70b-versatile (fallback)"  # ✅ FIXED: updated fallback model name
+                "model": "llama-3.3-70b-versatile (fallback)"  # ✅ FIXED: updated model name
             }
         except Exception as fallback_error:
             raise HTTPException(status_code=500, detail=f"Claude error: {str(e)}, Fallback error: {str(fallback_error)}")
@@ -1223,9 +1223,9 @@ async def send_message(
             if msg.content.strip():
                 groq_messages.append({"role": role, "content": msg.content})
 
-        # ✅ FIXED: Using new model for legacy endpoint
+        # ✅ FIXED: Using llama-3.3-70b-versatile for legacy endpoint
         completion = get_groq_client().chat.completions.create(
-            model="llama-3.1-70b-versatile",  # ✅ FIXED: replaced deprecated model
+            model="llama-3.3-70b-versatile",  # ✅ FIXED: latest stable model
             messages=groq_messages,
             max_tokens=2048,
             temperature=0.7,
