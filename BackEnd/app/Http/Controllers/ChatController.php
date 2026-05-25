@@ -289,7 +289,7 @@ class ChatController extends Controller
         // ── Call AI service ────────────────────────────────────────────────────
         $aiText    = null;
         $aiTokens  = 0;
-        $aiModel   = $requestedModel ?? 'llama-3.3-70b-versatile';
+        $aiModel   = $requestedModel ?? 'llama3-70b-8192';
         $responseTimeMs = null;
         $aiRequestStartedAt = microtime(true);
 

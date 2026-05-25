@@ -30,7 +30,7 @@ class ChatTest extends TestCase
             '*/api/chat' => Http::response([
                 'content' => 'Chào bạn, tôi là AI của Architect.',
                 'tokens' => 15,
-                'model' => 'llama-3.3-70b-versatile'
+                'model' => 'llama3-70b-8192'
             ], 200),
         ]);
 
