@@ -1,5 +1,5 @@
 import traceback
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Response
 from fastapi.middleware.cors import CORSMiddleware
 import redis, os, mysql.connector, json, io, re, subprocess, base64
 from datetime import datetime, timedelta
@@ -19,6 +19,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI(title="Architect AI Service")
+
+# Fix favicon 404 error
+@app.get("/favicon.ico")
+async def favicon():
+    return Response(status_code=204)
 
 
 @app.get("/")
@@ -133,37 +138,54 @@ SYSTEM_PROMPT = """Bạn là **Architect AI Premium** — một chuyên gia tư 
 _CPU_SPEED_CACHE = None
 
 def get_cpu_speed():
+    """Get CPU speed - Linux compatible"""
     global _CPU_SPEED_CACHE
     if _CPU_SPEED_CACHE:
         return _CPU_SPEED_CACHE
+    
+    # Try Linux /proc/cpuinfo
     try:
-        cmd = "wmic cpu get currentclockspeed"
-        output = subprocess.check_output(cmd, shell=True).decode()
-        _CPU_SPEED_CACHE = f"{float(output.split(chr(10))[1].strip())/1000:.2f} GHz"
-        return _CPU_SPEED_CACHE
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                if 'MHz' in line:
+                    speed_mhz = float(line.split(':')[1].strip())
+                    _CPU_SPEED_CACHE = f"{speed_mhz/1000:.2f} GHz"
+                    return _CPU_SPEED_CACHE
     except:
-        return "2.40 GHz"
+        pass
+    
+    # Try lscpu command
+    try:
+        result = subprocess.run(['lscpu'], capture_output=True, text=True, timeout=2)
+        for line in result.stdout.split('\n'):
+            if 'CPU max MHz' in line or 'CPU MHz' in line:
+                speed_mhz = float(line.split(':')[1].strip())
+                _CPU_SPEED_CACHE = f"{speed_mhz/1000:.2f} GHz"
+                return _CPU_SPEED_CACHE
+    except:
+        pass
+    
+    return "2.40 GHz"
 
 def get_cpu_load():
+    """Get CPU load - Linux compatible"""
     try:
-        cmd = "wmic cpu get loadpercentage /value"
-        output = subprocess.check_output(cmd, shell=True).decode(errors="ignore")
-        values = re.findall(r"LoadPercentage=(\d+)", output)
-        if values:
-            loads = [int(v) for v in values]
-            return round(sum(loads) / len(loads), 1)
+        # Read from /proc/loadavg
+        with open('/proc/loadavg', 'r') as f:
+            load_data = f.read().split()
+            load_1min = float(load_data[0])
+            cpu_count = os.cpu_count() or 1
+            return round((load_1min / cpu_count) * 100, 1)
     except:
         pass
-
+    
+    # Try using psutil if available
     try:
-        cmd = "wmic cpu get loadpercentage"
-        output = subprocess.check_output(cmd, shell=True).decode(errors="ignore")
-        values = [int(v) for v in re.findall(r"\b\d+\b", output)]
-        if values:
-            return round(sum(values) / len(values), 1)
-    except:
+        import psutil
+        return psutil.cpu_percent(interval=0.5)
+    except ImportError:
         pass
-
+    
     return None
 
 

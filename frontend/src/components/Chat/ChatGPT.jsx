@@ -151,6 +151,33 @@ const CodeBlock = ({ inline, children, className }) => {
     );
 };
 
+// ✅ Component Image được fix - KHÔNG hiển thị "AI Generated Visual"
+const CustomImage = ({ src, alt }) => {
+    // Filter out invalid images
+    if (!src || src === "undefined" || src === "null") return null;
+    
+    return (
+        <div className="my-4 overflow-hidden rounded-[24px] border border-border/70 bg-background-elevated shadow-xl transition-all hover:shadow-2xl">
+            <img
+                src={src}
+                alt={alt || "AI generated content"}
+                className="w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
+                loading="lazy"
+                onError={(e) => {
+                    e.target.style.display = "none";
+                    const parent = e.target.closest('.my-4');
+                    if (parent) parent.style.display = "none";
+                }}
+            />
+            {alt && alt !== "AI generated content" && (
+                <div className="bg-surface/30 px-4 py-2 italic text-[11px] text-text-dim border-t border-border/70">
+                    {alt}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function ChatGPT({ messages = [], isLoading, messagesEndRef, showTimestamps, autoScroll = true, onFeedback, user, onSendSuggestion }) {
     const [showScroll, setShowScroll] = useState(false);
     const chatRef = useRef(null);
@@ -288,9 +315,25 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
         );
     };
 
+    // ✅ Clean content function - remove unwanted text
+    const cleanContent = (content) => {
+        if (!content) return content;
+        let cleaned = content;
+        // Remove "AI GENERATED VISUAL" text
+        cleaned = cleaned.replace(/AI\s*GENERATED\s*VISUAL/gi, '');
+        // Remove duplicate "Chia sẻ file"
+        cleaned = cleaned.replace(/(Chia sẻ file\s*){2,}/gi, 'Chia sẻ file');
+        // Remove empty markdown images
+        cleaned = cleaned.replace(/!\[\]\(undefined\)/g, '');
+        cleaned = cleaned.replace(/!\[\]\(null\)/g, '');
+        return cleaned.trim();
+    };
+
     const renderContent = (msg, role) => {
         const hasImage = Boolean(msg.image_path);
         const isBill = msg.type === "bill";
+        // Clean the content before rendering
+        const cleanedContent = cleanContent(msg.content);
 
         return (
             <>
@@ -303,7 +346,6 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
                 {msg.bill && renderBillSummary(msg.bill)}
 
                 {hasImage && (() => {
-                    // Multi-image batch: show all previews in a grid
                     const paths = msg.image_paths && msg.image_paths.length > 1
                         ? msg.image_paths
                         : [msg.image_path];
@@ -335,7 +377,9 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
                                                 loading="lazy"
                                                 onError={(e) => {
                                                     e.currentTarget.style.display = "none";
-                                                    e.currentTarget.nextElementSibling.style.display = "flex";
+                                                    if (e.currentTarget.nextElementSibling) {
+                                                        e.currentTarget.nextElementSibling.style.display = "flex";
+                                                    }
                                                 }}
                                             />
                                             <div style={{ display: "none" }} className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background-elevated text-text-dim">
@@ -374,35 +418,16 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
                     );
                 })()}
 
-                {msg.content ? (
+                {cleanedContent ? (
                     <div className={hasImage ? "mt-3" : ""}>
                         {role === "user" ? (
-                            <span className="whitespace-pre-wrap">{msg.content}</span>
+                            <span className="whitespace-pre-wrap">{cleanedContent}</span>
                         ) : (
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 components={{
                                     code: CodeBlock,
-                                    img: ({ src, alt }) => (
-                                        <div className="my-4 overflow-hidden rounded-[24px] border border-border/70 bg-background-elevated shadow-xl transition-all hover:shadow-2xl">
-                                            <div className="flex items-center justify-between border-b border-border/70 bg-surface/50 px-4 py-2">
-                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
-                                                    AI Generated Visual
-                                                </span>
-                                            </div>
-                                            <img
-                                                src={src}
-                                                alt={alt}
-                                                className="w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
-                                                loading="lazy"
-                                            />
-                                            {alt && (
-                                                <div className="bg-surface/30 px-4 py-2 italic text-[11px] text-text-dim border-t border-border/70">
-                                                    {alt}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ),
+                                    img: CustomImage,  // ✅ Sử dụng component image đã fix
                                     a: (props) => (
                                         <a {...props} className="text-accent underline decoration-accent/30 underline-offset-4" target="_blank" rel="noopener noreferrer">
                                             {props.children}
@@ -410,7 +435,7 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
                                     ),
                                 }}
                             >
-                                {msg.content}
+                                {cleanedContent}
                             </ReactMarkdown>
                         )}
                     </div>
@@ -550,4 +575,3 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
         </section>
     );
 }
-
