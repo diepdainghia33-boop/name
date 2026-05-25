@@ -1,3 +1,4 @@
+import traceback
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import redis, os, mysql.connector, json, io, re, subprocess, base64
@@ -934,7 +935,6 @@ class ChatRequest(BaseModel):
     model: Optional[str] = None
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
-
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
     """
@@ -943,20 +943,35 @@ async def chat(req: ChatRequest):
     Roles 'bot' are automatically mapped to 'assistant' for Groq compatibility.
     """
     try:
+        # KIỂM TRA LỖI 1: Xác thực API Key trước khi gọi client
+        if not os.environ.get("GROQ_API_KEY"):
+            print("==> ERROR: GROQ_API_KEY is missing in Render Environment!")
+            raise HTTPException(status_code=500, detail="Groq API Key is not configured on Render.")
+
         system = req.system_prompt or SYSTEM_PROMPT
         groq_messages = [{"role": "system", "content": system}]
 
-        for msg in req.history:
-            # Fix critical bug: Groq requires 'assistant', not 'bot'
-            role = "assistant" if msg.role in ("bot", "assistant") else "user"
-            if msg.content and msg.content.strip():
-                groq_messages.append({"role": role, "content": msg.content})
+        # Kiểm tra dữ liệu history truyền vào để tránh lỗi NoneType
+        if req.history:
+            for msg in req.history:
+                # Fix critical bug: Groq requires 'assistant', not 'bot'
+                role = "assistant" if msg.role in ("bot", "assistant") else "user"
+                if msg.content and msg.content.strip():
+                    groq_messages.append({"role": role, "content": msg.content})
 
-        model = req.model or "llama-3.3-70b-versatile"
+        # KIỂM TRA LỖI 2: Thay thế model versatile đã bị hoen rỉ bằng model mới chạy siêu nhanh
+        # Thay vì llama-3.3-70b-versatile, ta dùng bản ổn định hiện tại: llama-3.3-70b-specdec hoặc llama3-70b-8192
+        current_default_model = "llama3-70b-8192" 
+        model = req.model if (req.model and "versatile" not in req.model) else current_default_model
+        
+        # Ép hạ max_tokens xuống nếu bạn đang bị dính lỗi timeout 5s từ Laravel gửi sang
+        max_tokens = req.max_tokens or 1024  # Thử hạ từ 2048 xuống 1024 để AI phản hồi nhanh hơn
+
+        # Gọi API của Groq
         completion = get_groq_client().chat.completions.create(
             model=model,
             messages=groq_messages,
-            max_tokens=req.max_tokens or 2048,
+            max_tokens=max_tokens,
             temperature=req.temperature if req.temperature is not None else 0.7,
         )
 
@@ -968,9 +983,15 @@ async def chat(req: ChatRequest):
             "tokens": tokens_used,
             "model": model
         }
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+        # In toàn bộ vết lỗi ra màn hình Render Logs để bạn "bắt mạch"
+        print("================= CRITICAL EXCEPTION IN AI SERVICE =================")
+        traceback.print_exc()
+        print("====================================================================")
+        raise HTTPException(status_code=500, detail=f"AI Service Error: {str(e)}")
 
 # ─── Claude-powered /api/chat/v2 endpoint (multi-modal + web search) ───────────────────
 

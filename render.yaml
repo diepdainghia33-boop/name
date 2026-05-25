@@ -34,13 +34,13 @@ services:
       - key: QUEUE_CONNECTION
         value: sync
       - key: AI_SERVICE_URL
-        value: https://chatid-ai-xwhi.onrender.com
+        value: http://chatid-ai:8001 # <--- SỬA LỖI 1: Gọi mạng nội bộ Render thay vì URL ngoài
       - key: APP_KEY
         generateValue: true
+      - key: PORT
+        value: "8000" # <--- SỬA LỖI 2: Ép cổng nội bộ thành 8000
       - key: DB_HOST
         sync: false
-      - key: PORT
-        value: "8000"
       - key: DB_USERNAME
         sync: false
       - key: DB_PASSWORD
@@ -58,14 +58,14 @@ services:
     envVars:
       - key: DISABLE_TRANSFORMERS
         value: "1"
+      - key: PORT
+        value: "10000"
       - key: GROQ_API_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: DB_HOST
         sync: false
-      - key: PORT
-        value: "8001"
       - key: DB_PORT
         value: "4000"
       - key: DB_DATABASE
