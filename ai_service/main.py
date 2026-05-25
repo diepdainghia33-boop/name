@@ -288,7 +288,7 @@ def _parse_date(value):
         return None
 
     patterns = [
-        (r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", ["%d/%m/%Y", "%d-%m-%Y", "%d/%m/%y", "%d-%m-%y"]),
+        (r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", ["%d/%m/%Y", "%d-%m-%Y", "%d/%m/%y", "%d-%m/%y"]),
         (r"(\d{4}[/-]\d{1,2}[/-]\d{1,2})", ["%Y/%m/%d", "%Y-%m-%d"]),
         (r"(\d{1,2}\.\d{1,2}\.\d{2,4})", ["%d.%m.%Y", "%d.%m.%y"]),
     ]
@@ -478,11 +478,11 @@ def _extract_invoice_with_claude(ocr_text: str):
         except Exception as exc:
             print(f"Claude extraction failed, falling back to Groq: {exc}")
 
-    # --- Fallback: Groq (llama-3.3-70b) ---
+    # --- Fallback: Groq (FIXED: using llama-3.1-70b-versatile) ---
     try:
         groq_client = get_groq_client()
         completion = groq_client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.1-70b-versatile",  # ✅ FIXED: replaced deprecated model
             messages=[
                 {"role": "system", "content": "You are an invoice data extraction engine. Return only valid JSON matching the requested schema exactly. No markdown, no commentary."},
                 {"role": "user", "content": prompt},
@@ -905,7 +905,6 @@ def get_analytics(request: Request):
         pass
 
     # Fallback data if empty
-    # Fallback data if empty
     if not data or len(data) == 0:
         if days_param == 1:
             days = [f"{h}:00" for h in range(24)]
@@ -935,6 +934,7 @@ class ChatRequest(BaseModel):
     model: Optional[str] = None
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
+
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
     """
@@ -959,10 +959,9 @@ async def chat(req: ChatRequest):
                 if msg.content and msg.content.strip():
                     groq_messages.append({"role": role, "content": msg.content})
 
-        # KIỂM TRA LỖI 2: Thay thế model versatile đã bị hoen rỉ bằng model mới chạy siêu nhanh
-        # Thay vì llama3-70b-8192, ta dùng bản ổn định hiện tại: llama-3.3-70b-specdec hoặc llama3-70b-8192
-        current_default_model = "llama3-70b-8192" 
-        model = req.model if (req.model and "versatile" not in req.model) else current_default_model
+        # ✅ FIXED: Replaced deprecated model with current supported model
+        current_default_model = "llama-3.1-70b-versatile"
+        model = req.model if req.model else current_default_model
         
         # LỌC MODEL KHÔNG HỢP LỆ CHO GROQ:
         # Nếu frontend gửi nhầm 'gpt-4' hoặc 'claude', đưa về default model của Groq
@@ -1154,8 +1153,9 @@ async def chat_v2(req: ChatRequestV2):
                 if msg.content and msg.content.strip():
                     groq_messages.append({"role": role, "content": msg.content})
 
+            # ✅ FIXED: Using new model for fallback
             completion = get_groq_client().chat.completions.create(
-                model="llama3-70b-8192",
+                model="llama-3.1-70b-versatile",  # ✅ FIXED: replaced deprecated model
                 messages=groq_messages,
                 max_tokens=2048,
                 temperature=0.7,
@@ -1164,7 +1164,7 @@ async def chat_v2(req: ChatRequestV2):
             return {
                 "content": completion.choices[0].message.content,
                 "tokens": completion.usage.total_tokens,
-                "model": "llama3-70b-8192 (fallback)"
+                "model": "llama-3.1-70b-versatile (fallback)"  # ✅ FIXED: updated fallback model name
             }
         except Exception as fallback_error:
             raise HTTPException(status_code=500, detail=f"Claude error: {str(e)}, Fallback error: {str(fallback_error)}")
@@ -1223,8 +1223,9 @@ async def send_message(
             if msg.content.strip():
                 groq_messages.append({"role": role, "content": msg.content})
 
+        # ✅ FIXED: Using new model for legacy endpoint
         completion = get_groq_client().chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.1-70b-versatile",  # ✅ FIXED: replaced deprecated model
             messages=groq_messages,
             max_tokens=2048,
             temperature=0.7,
@@ -1281,4 +1282,3 @@ async def get_chatbot_analytics():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
