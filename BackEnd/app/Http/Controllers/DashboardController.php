@@ -46,41 +46,53 @@ class DashboardController extends Controller
         $avgLatency = $this->calculateAvgLatency($conversationIds);
 
         // Calculate 7-day Trends
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $dateExpr = $isSqlite ? "date(created_at)" : "DATE(created_at)";
+        $startDate = \Carbon\Carbon::today()->subDays(6)->startOfDay();
+        $endDate = \Carbon\Carbon::now()->endOfDay();
+
+        $trendsData = Conversation::where('user_id', $userId)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw("$dateExpr as date_label, COUNT(*) as count")
+            ->groupByRaw($dateExpr)
+            ->pluck('count', 'date_label')
+            ->toArray();
+
+        $blueprintTrendsData = Blueprint::where('user_id', $userId)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw("$dateExpr as date_label, COUNT(*) as count")
+            ->groupByRaw($dateExpr)
+            ->pluck('count', 'date_label')
+            ->toArray();
+
+        $activityTrendsData = ActivityLog::where('user_id', $userId)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw("$dateExpr as date_label, COUNT(*) as count")
+            ->groupByRaw($dateExpr)
+            ->pluck('count', 'date_label')
+            ->toArray();
+
         $trends = [];
+        $blueprintTrends = [];
+        $activityTrends = [];
+
         for ($i = 6; $i >= 0; $i--) {
             $date = \Carbon\Carbon::today()->subDays($i);
-            $count = Conversation::where('user_id', $userId)
-                ->whereDate('created_at', $date)
-                ->count();
+            $dateStr = $date->toDateString();
+
             $trends[] = [
                 'day' => $date->format('D'),
-                'count' => $count
+                'count' => $trendsData[$dateStr] ?? 0
             ];
-        }
 
-        // Calculate 7-day Trends for Blueprints
-        $blueprintTrends = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = \Carbon\Carbon::today()->subDays($i);
-            $count = Blueprint::where('user_id', $userId)
-                ->whereDate('created_at', $date)
-                ->count();
             $blueprintTrends[] = [
                 'day' => $date->format('D'),
-                'count' => $count
+                'count' => $blueprintTrendsData[$dateStr] ?? 0
             ];
-        }
 
-        // Calculate 7-day Trends for Activity Logs
-        $activityTrends = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = \Carbon\Carbon::today()->subDays($i);
-            $count = ActivityLog::where('user_id', $userId)
-                ->whereDate('created_at', $date)
-                ->count();
             $activityTrends[] = [
                 'day' => $date->format('D'),
-                'count' => $count
+                'count' => $activityTrendsData[$dateStr] ?? 0
             ];
         }
 
