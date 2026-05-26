@@ -27,6 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dashboard Routes
     Route::get('/dashboard', 'App\Http\Controllers\DashboardController@getData');
     Route::post('/dashboard/log', 'App\Http\Controllers\DashboardController@addLog');
+    Route::get('/system/stats', 'App\Http\Controllers\DashboardController@getSystemStats');
     
     // Chat Routes
     Route::get('/conversations', 'App\Http\Controllers\ChatController@getConversations');

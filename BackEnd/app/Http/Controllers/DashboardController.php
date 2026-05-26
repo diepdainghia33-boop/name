@@ -204,4 +204,23 @@ class DashboardController extends Controller
 
         return response()->json($log);
     }
+
+    public function getSystemStats()
+    {
+        $aiServiceUrl = config('services.ai.url', 'http://127.0.0.1:8001');
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(3)->get("{$aiServiceUrl}/api/stats");
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to fetch AI service stats: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'cpu_load' => null,
+            'status' => 'Offline',
+            'health' => 0
+        ]);
+    }
 }

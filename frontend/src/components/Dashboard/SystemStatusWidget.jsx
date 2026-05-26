@@ -1,8 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../api/axios";
 
-const AI_SERVICE_URL = process.env.REACT_APP_AI_SERVICE_URL || "http://127.0.0.1:8001";
 const BAR_COUNT = 9;
 
 export default function SystemStatusWidget({ health = null }) {
@@ -14,7 +13,7 @@ export default function SystemStatusWidget({ health = null }) {
 
         const fetchSystemStats = async () => {
             try {
-                const response = await axios.get(`${AI_SERVICE_URL}/api/stats`, { timeout: 3000 });
+                const response = await api.get("/system/stats", { timeout: 3000 });
                 const rawLoad = response.data?.cpu_load;
                 if (!mounted || rawLoad === null || rawLoad === undefined || rawLoad === "") return;
 

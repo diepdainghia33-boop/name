@@ -34,7 +34,7 @@ services:
       - key: QUEUE_CONNECTION
         value: sync
       - key: AI_SERVICE_URL
-        value: http://chatid-ai:8001 # <--- SỬA LỖI 1: Gọi mạng nội bộ Render thay vì URL ngoài
+        value: http://chatid-ai:10000 # <--- SỬA LỖI 1: Cập nhật đúng port nội bộ Render
       - key: APP_KEY
         generateValue: true
       - key: PORT
