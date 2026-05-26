@@ -28,9 +28,9 @@ services:
       - key: MYSQL_ATTR_SSL_CA
         value: /etc/ssl/certs/ca-certificates.crt
       - key: CACHE_STORE
-        value: file
+        value: redis
       - key: SESSION_DRIVER
-        value: file
+        value: redis
       - key: QUEUE_CONNECTION
         value: sync
       - key: AI_SERVICE_URL
@@ -46,7 +46,10 @@ services:
       - key: DB_PASSWORD
         sync: false
       - key: REDIS_URL
-        sync: false
+        fromService:
+          type: redis
+          name: chatid-redis
+          property: connectionString
 
   - type: web
     name: chatid-ai
@@ -77,4 +80,12 @@ services:
       - key: MYSQL_ATTR_SSL_CA
         value: /etc/ssl/certs/ca-certificates.crt
       - key: REDIS_URL
-        sync: false
+        fromService:
+          type: redis
+          name: chatid-redis
+          property: connectionString
+
+  - type: redis
+    name: chatid-redis
+    plan: free
+    ipAllowList: [] # Allow only internal traffic
