@@ -1,7 +1,7 @@
 import traceback
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Response
 from fastapi.middleware.cors import CORSMiddleware
-import redis, os, mysql.connector, json, io, re, subprocess, base64
+import redis, os, mysql.connector, mysql.connector.pooling, json, io, re, subprocess, base64, time
 from datetime import datetime, timedelta
 from typing import Optional, List
 from pydantic import BaseModel
@@ -49,25 +49,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_DB_POOL = None
+_SETTINGS_CACHE = {}
+_SETTINGS_CACHE_TTL = 300  # 5 minutes in seconds
+
 def get_db():
+    global _DB_POOL
     host = os.getenv("DB_HOST")
     if not host:
         return None
     try:
-        config = {
-            "host": host,
-            "port": int(os.getenv("DB_PORT", "3306")),
-            "user": os.getenv("DB_USERNAME", "root"),
-            "password": os.getenv("DB_PASSWORD", ""),
-            "database": os.getenv("DB_DATABASE", "test"),
-            "connect_timeout": 5,
-        }
-        ssl_ca = os.getenv("MYSQL_ATTR_SSL_CA")
-        if ssl_ca:
-            config["ssl_ca"] = ssl_ca
-        return mysql.connector.connect(**config)
-    except Exception:
-        return None
+        if not _DB_POOL:
+            config = {
+                "host": host,
+                "port": int(os.getenv("DB_PORT", "3306")),
+                "user": os.getenv("DB_USERNAME", "root"),
+                "password": os.getenv("DB_PASSWORD", ""),
+                "database": os.getenv("DB_DATABASE", "test"),
+                "connect_timeout": 5,
+            }
+            ssl_ca = os.getenv("MYSQL_ATTR_SSL_CA")
+            if ssl_ca:
+                config["ssl_ca"] = ssl_ca
+            
+            # Create connection pool
+            _DB_POOL = mysql.connector.pooling.MySQLConnectionPool(
+                pool_name="ai_service_pool",
+                pool_size=5,
+                pool_reset_mode='session',
+                **config
+            )
+        
+        return _DB_POOL.get_connection()
+    except Exception as e:
+        print(f"Database connection pool error: {e}")
+        # Fallback to direct connection if pool fails
+        try:
+            config = {
+                "host": host,
+                "port": int(os.getenv("DB_PORT", "3306")),
+                "user": os.getenv("DB_USERNAME", "root"),
+                "password": os.getenv("DB_PASSWORD", ""),
+                "database": os.getenv("DB_DATABASE", "test"),
+                "connect_timeout": 5,
+            }
+            ssl_ca = os.getenv("MYSQL_ATTR_SSL_CA")
+            if ssl_ca:
+                config["ssl_ca"] = ssl_ca
+            return mysql.connector.connect(**config)
+        except Exception:
+            return None
 
 
 def get_redis_client():
@@ -80,6 +111,13 @@ def get_redis_client():
     return redis.Redis(host=host, port=port, password=password, socket_connect_timeout=2)
 
 def get_system_setting(key, default=None):
+    global _SETTINGS_CACHE
+    now = time.time()
+    if key in _SETTINGS_CACHE:
+        val, expiry = _SETTINGS_CACHE[key]
+        if now < expiry:
+            return val
+
     db = get_db()
     if not db:
         return default
@@ -88,7 +126,9 @@ def get_system_setting(key, default=None):
         cursor.execute("SELECT value FROM settings WHERE `key` = %s LIMIT 1", (key,))
         row = cursor.fetchone()
         db.close()
-        return row['value'] if row and row['value'] else default
+        val = row['value'] if row and row['value'] else default
+        _SETTINGS_CACHE[key] = (val, now + _SETTINGS_CACHE_TTL)
+        return val
     except:
         if db: db.close()
         return default

@@ -83,12 +83,7 @@ export default function Chat() {
         }
     }, []);
 
-    useEffect(() => {
-        fetchConversations();
-        fetchSettings();
-    }, [fetchConversations]);
-
-    const fetchSettings = async () => {
+    const fetchSettings = useCallback(async () => {
         try {
             const response = await settingsApi.getPreferences();
             if (response.data.preferences) {
@@ -101,7 +96,12 @@ export default function Chat() {
         } catch (error) {
             console.error("Failed to fetch settings:", error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchConversations();
+        fetchSettings();
+    }, [fetchConversations, fetchSettings]);
 
     // ── Welcome message effect removed to favor Premium UI Welcome component ───────────────────
 
@@ -111,6 +111,23 @@ export default function Chat() {
             scrollToBottom();
         }
     }, [filteredMessages, isLoading, scrollToBottom, settings.toggles.autoScroll]);
+
+    // ── Callbacks for Header and Sidebars ─────────────────────────────────────────
+    const handleMenuToggle = useCallback(() => {
+        setMobileSidebarOpen(prev => !prev);
+    }, []);
+
+    const handleConversationsToggle = useCallback(() => {
+        setMobileConversationsOpen(prev => !prev);
+    }, []);
+
+    const handleMobileSearchToggle = useCallback(() => {
+        setMobileSearchOpen(prev => !prev);
+    }, []);
+
+    const handleCloseMobileSidebar = useCallback(() => {
+        setMobileSidebarOpen(false);
+    }, []);
 
     // ── Select conversation ───────────────────────────────────────────────────────
     const handleSelectConversation = useCallback(async (id) => {
@@ -135,6 +152,20 @@ export default function Chat() {
         setActiveConversationId(null);
         setMessages([]);
         setMobileSidebarOpen(false);
+    }, []);
+
+    const handleSelectConversationMobile = useCallback((id) => {
+        handleSelectConversation(id);
+        setMobileConversationsOpen(false);
+    }, [handleSelectConversation]);
+
+    const handleNewConversationMobile = useCallback(() => {
+        handleNewConversation();
+        setMobileConversationsOpen(false);
+    }, [handleNewConversation]);
+
+    const handleCloseMobileConversations = useCallback(() => {
+        setMobileConversationsOpen(false);
     }, []);
 
     // ── Delete conversation ───────────────────────────────────────────────────────
@@ -363,7 +394,7 @@ export default function Chat() {
             <div className={`sidebar-left fixed lg:static inset-y-0 left-0 z-50 transform ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 w-72`}>
                 <SidebarLeft
                     user={user}
-                    onClose={() => setMobileSidebarOpen(false)}
+                    onClose={handleCloseMobileSidebar}
                 />
             </div>
 
@@ -373,9 +404,9 @@ export default function Chat() {
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
                     user={user}
-                    onMenuToggle={() => setMobileSidebarOpen(prev => !prev)}
-                    onConversationsToggle={() => setMobileConversationsOpen(prev => !prev)}
-                    showMobileSearch={() => setMobileSearchOpen(prev => !prev)}
+                    onMenuToggle={handleMenuToggle}
+                    onConversationsToggle={handleConversationsToggle}
+                    showMobileSearch={handleMobileSearchToggle}
                 />
 
                 {/* Mobile search bar */}
@@ -419,7 +450,7 @@ export default function Chat() {
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 className="lg:hidden fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
-                                onClick={() => setMobileConversationsOpen(false)}
+                                onClick={handleCloseMobileConversations}
                             />
                             <motion.div
                                 initial={{ x: '100%' }}
@@ -430,14 +461,8 @@ export default function Chat() {
                             >
                                 <RightPanel
                                     conversations={conversations}
-                                    onSelectConversation={(id) => {
-                                        handleSelectConversation(id);
-                                        setMobileConversationsOpen(false);
-                                    }}
-                                    onNewConversation={() => {
-                                        handleNewConversation();
-                                        setMobileConversationsOpen(false);
-                                    }}
+                                    onSelectConversation={handleSelectConversationMobile}
+                                    onNewConversation={handleNewConversationMobile}
                                     onDeleteConversation={handleDeleteConversation}
                                     onPinConversation={handlePinConversation}
                                     onArchiveConversation={handleArchiveConversation}
@@ -445,7 +470,7 @@ export default function Chat() {
                                     onDuplicateConversation={handleDuplicateConversation}
                                     activeId={activeConversationId}
                                     isMobile={true}
-                                    onClose={() => setMobileConversationsOpen(false)}
+                                    onClose={handleCloseMobileConversations}
                                 />
                             </motion.div>
                         </>

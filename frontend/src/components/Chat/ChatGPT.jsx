@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThumbsUp, ThumbsDown, Sparkles, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -13,7 +13,7 @@ function timeAgo(dateStr) {
     return `${Math.floor(diff / 86400)}d`;
 }
 
-function Typing() {
+const Typing = memo(function Typing() {
     return (
         <div className="flex items-center gap-1.5 px-5 py-4">
             {[0, 1, 2].map((i) => (
@@ -34,9 +34,9 @@ function Typing() {
             <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent/60">Architect is thinking</span>
         </div>
     );
-}
+});
 
-function Reaction({ icon: Icon, onClick, active }) {
+const Reaction = memo(function Reaction({ icon: Icon, onClick, active }) {
     return (
         <button
             onClick={onClick}
@@ -48,9 +48,9 @@ function Reaction({ icon: Icon, onClick, active }) {
             <Icon size={14} />
         </button>
     );
-}
+});
 
-function Welcome({ userName, onSuggestionClick }) {
+const Welcome = memo(function Welcome({ userName, onSuggestionClick }) {
     const suggestions = [
         "Thiết kế hệ thống Microservices cho E-commerce",
         "Phân tích hóa đơn này giúp tôi",
@@ -107,9 +107,9 @@ function Welcome({ userName, onSuggestionClick }) {
             </motion.div>
         </div>
     );
-}
+});
 
-const CodeBlock = ({ inline, children, className }) => {
+const CodeBlock = memo(({ inline, children, className }) => {
     const [copied, setCopied] = useState(false);
     const content = String(children).replace(/\n$/, "");
 
@@ -132,7 +132,7 @@ const CodeBlock = ({ inline, children, className }) => {
             <div className="absolute right-3 top-3 z-20 flex gap-2 opacity-0 group-hover/code:opacity-100 transition-opacity">
                 <button
                     onClick={handleCopy}
-                    className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-background-elevated/80 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted backdrop-blur-sm transition-all hover:border-accent/40 hover:text-accent"
+                    className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-background-elevated/80 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-dim backdrop-blur-sm transition-all hover:border-accent/40 hover:text-accent"
                 >
                     {copied ? (
                         <>
@@ -149,11 +149,9 @@ const CodeBlock = ({ inline, children, className }) => {
             </pre>
         </div>
     );
-};
+});
 
-// ✅ Component Image được fix - KHÔNG hiển thị "AI Generated Visual"
-const CustomImage = ({ src, alt }) => {
-    // Filter out invalid images
+const CustomImage = memo(({ src, alt }) => {
     if (!src || src === "undefined" || src === "null") return null;
     
     return (
@@ -176,9 +174,232 @@ const CustomImage = ({ src, alt }) => {
             )}
         </div>
     );
+});
+
+const formatBillDate = (value) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("vi-VN");
 };
 
-export default function ChatGPT({ messages = [], isLoading, messagesEndRef, showTimestamps, autoScroll = true, onFeedback, user, onSendSuggestion }) {
+const formatBillAmount = (value, currency = "VND") => {
+    if (value === null || value === undefined || value === "") return "—";
+    return `${value} ${currency}`.trim();
+};
+
+const cleanContent = (content) => {
+    if (!content) return content;
+    let cleaned = content;
+    cleaned = cleaned.replace(/AI\s*GENERATED\s*VISUAL/gi, '');
+    cleaned = cleaned.replace(/(Chia sẻ file\s*){2,}/gi, 'Chia sẻ file');
+    cleaned = cleaned.replace(/!\[\]\(undefined\)/g, '');
+    cleaned = cleaned.replace(/!\[\]\(null\)/g, '');
+    return cleaned.trim();
+};
+
+const BillSummary = memo(({ bill }) => {
+    if (!bill) return null;
+
+    const items = Array.isArray(bill.items) ? bill.items : [];
+    const extracted = bill.extracted_data || {};
+    const confidence = bill.confidence_score ?? extracted.confidence;
+
+    return (
+        <div className="mb-3 rounded-[20px] border border-accent/20 bg-accent/5 p-4">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <p className="text-[0.625rem] font-black uppercase tracking-[0.28em] text-accent">
+                        Invoice OCR
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-text">
+                        Trích xuất hóa đơn
+                    </p>
+                </div>
+
+                {confidence !== null && confidence !== undefined && confidence !== "" && (
+                    <span className="rounded-full border border-accent/20 bg-background-elevated px-2.5 py-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-accent">
+                        {Number(confidence).toFixed(0)}%
+                    </span>
+                )}
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
+                    <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">Store</p>
+                    <p className="mt-1 text-sm font-semibold text-text">{bill.store_name || extracted.store_name || "—"}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
+                    <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">Invoice No.</p>
+                    <p className="mt-1 text-sm font-semibold text-text">{bill.invoice_number || extracted.invoice_number || "—"}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
+                    <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">Date</p>
+                    <p className="mt-1 text-sm font-semibold text-text">{formatBillDate(bill.purchase_date || extracted.purchase_date)}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
+                    <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">Total</p>
+                    <p className="mt-1 text-sm font-semibold text-text">
+                        {formatBillAmount(bill.total_amount ?? extracted.total_amount, bill.currency || extracted.currency)}
+                    </p>
+                </div>
+            </div>
+
+            {items.length > 0 && (
+                <div className="mt-4 border-t border-border/70 pt-4">
+                    <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">
+                        Items ({items.length})
+                    </p>
+                    <div className="mt-2 space-y-2">
+                        {items.slice(0, 3).map((item, index) => (
+                            <div
+                                key={`${item.id || index}`}
+                                className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background-elevated px-3 py-2"
+                            >
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-text">{item.name || "Unnamed item"}</p>
+                                    <p className="mt-1 text-[0.625rem] uppercase tracking-[0.18em] text-text-dim">
+                                        Qty {item.quantity ?? 1}
+                                    </p>
+                                </div>
+                                <p className="shrink-0 text-sm font-bold text-accent">
+                                    {item.total != null ? `${item.total} ${bill.currency || extracted.currency || "VND"}` : "—"}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {bill.ocr_text && (
+                <details className="mt-4 rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
+                    <summary className="cursor-pointer text-[0.625rem] font-black uppercase tracking-[0.22em] text-text-dim">
+                        Raw OCR text
+                    </summary>
+                    <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap text-xs leading-6 text-text-muted">
+                        {bill.ocr_text}
+                    </pre>
+                </details>
+            )}
+        </div>
+    );
+});
+
+const MessageContent = memo(({ msg, role }) => {
+    const hasImage = Boolean(msg.image_path);
+    const isBill = msg.type === "bill";
+    const cleanedContent = cleanContent(msg.content);
+
+    return (
+        <>
+            {isBill && (
+                <div className="mb-3 inline-flex rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-[0.625rem] font-black uppercase tracking-[0.24em] text-accent">
+                    Hóa đơn
+                </div>
+            )}
+
+            {msg.bill && <BillSummary bill={msg.bill} />}
+
+            {hasImage && (() => {
+                const paths = msg.image_paths && msg.image_paths.length > 1
+                    ? msg.image_paths
+                    : [msg.image_path];
+                const isMulti = paths.length > 1;
+
+                return (
+                    <div className="overflow-hidden rounded-[20px] border border-border/70 bg-background-elevated">
+                        <div className="flex items-center justify-between border-b border-border/70 bg-surface/50 px-4 py-2">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
+                                {isMulti
+                                    ? `📄 ${paths.length} hóa đơn đã tải lên`
+                                    : (isBill ? "📄 Hóa đơn đã tải lên" : "🖼️ Ảnh đã tải lên")}
+                            </span>
+                            {isMulti && (
+                                <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-black text-accent border border-accent/20">
+                                    Batch OCR
+                                </span>
+                            )}
+                        </div>
+
+                        {isMulti ? (
+                            <div className={`grid gap-1 p-2 ${paths.length === 2 ? "grid-cols-2" : paths.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}>
+                                {paths.map((src, i) => (
+                                    <div key={i} className="relative aspect-square overflow-hidden rounded-[12px] bg-background">
+                                        <img
+                                            src={src}
+                                            alt={`Invoice ${i + 1}`}
+                                            className="h-full w-full object-cover"
+                                            loading="lazy"
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = "none";
+                                                if (e.currentTarget.nextElementSibling) {
+                                                    e.currentTarget.nextElementSibling.style.display = "flex";
+                                                }
+                                            }}
+                                        />
+                                        <div style={{ display: "none" }} className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background-elevated text-text-dim">
+                                            <span className="text-2xl">🧾</span>
+                                            <span className="text-[9px] font-bold">#{i + 1}</span>
+                                        </div>
+                                        <div className="absolute bottom-1 right-1 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                                            #{i + 1}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <>
+                                <img
+                                    src={paths[0]}
+                                    alt={isBill ? "Uploaded invoice" : "Uploaded image"}
+                                    className="max-h-[28rem] w-full object-contain bg-background-elevated"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = "none";
+                                        const fallback = e.currentTarget.nextElementSibling;
+                                        if (fallback) fallback.style.display = "flex";
+                                    }}
+                                />
+                                <div style={{ display: "none" }} className="flex flex-col items-center justify-center gap-3 py-10 text-text-dim">
+                                    <span className="text-4xl">🧾</span>
+                                    <span className="text-xs font-bold uppercase tracking-[0.2em]">
+                                        {isBill ? "Hóa đơn đã được xử lý" : "Ảnh đã được tải lên"}
+                                    </span>
+                                    <span className="text-[10px] text-text-dim/60">Xem kết quả trích xuất bên trên</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                );
+            })()}
+
+            {cleanedContent ? (
+                <div className={hasImage ? "mt-3" : ""}>
+                    {role === "user" ? (
+                        <span className="whitespace-pre-wrap">{cleanedContent}</span>
+                    ) : (
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                code: CodeBlock,
+                                img: CustomImage,
+                                a: (props) => (
+                                    <a {...props} className="text-accent underline decoration-accent/30 underline-offset-4" target="_blank" rel="noopener noreferrer">
+                                        {props.children}
+                                    </a>
+                                ),
+                            }}
+                        >
+                            {cleanedContent}
+                        </ReactMarkdown>
+                    )}
+                </div>
+            ) : null}
+        </>
+    );
+});
+
+function ChatGPT({ messages = [], isLoading, messagesEndRef, showTimestamps, autoScroll = true, onFeedback, user, onSendSuggestion }) {
     const [showScroll, setShowScroll] = useState(false);
     const chatRef = useRef(null);
 
@@ -187,12 +408,12 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
         setShowScroll(false);
     }, [messagesEndRef]);
 
-    const handleScroll = () => {
+    const handleScroll = useCallback(() => {
         const el = chatRef.current;
         if (!el) return;
         const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
         setShowScroll(!bottom);
-    };
+    }, []);
 
     useEffect(() => {
         if (autoScroll) {
@@ -216,234 +437,6 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
         return res;
     }, [messages]);
 
-    const formatBillDate = (value) => {
-        if (!value) return "—";
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return "—";
-        return date.toLocaleDateString("vi-VN");
-    };
-
-    const formatBillAmount = (value, currency = "VND") => {
-        if (value === null || value === undefined || value === "") return "—";
-        return `${value} ${currency}`.trim();
-    };
-
-    const renderBillSummary = (bill) => {
-        if (!bill) return null;
-
-        const items = Array.isArray(bill.items) ? bill.items : [];
-        const extracted = bill.extracted_data || {};
-        const confidence = bill.confidence_score ?? extracted.confidence;
-
-        return (
-            <div className="mb-3 rounded-[20px] border border-accent/20 bg-accent/5 p-4">
-                <div className="flex items-start justify-between gap-3">
-                    <div>
-                        <p className="text-[0.625rem] font-black uppercase tracking-[0.28em] text-accent">
-                            Invoice OCR
-                        </p>
-                        <p className="mt-1 text-sm font-bold text-text">
-                            Trích xuất hóa đơn
-                        </p>
-                    </div>
-
-                    {confidence !== null && confidence !== undefined && confidence !== "" && (
-                        <span className="rounded-full border border-accent/20 bg-background-elevated px-2.5 py-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-accent">
-                            {Number(confidence).toFixed(0)}%
-                        </span>
-                    )}
-                </div>
-
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
-                        <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">Store</p>
-                        <p className="mt-1 text-sm font-semibold text-text">{bill.store_name || extracted.store_name || "—"}</p>
-                    </div>
-                    <div className="rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
-                        <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">Invoice No.</p>
-                        <p className="mt-1 text-sm font-semibold text-text">{bill.invoice_number || extracted.invoice_number || "—"}</p>
-                    </div>
-                    <div className="rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
-                        <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">Date</p>
-                        <p className="mt-1 text-sm font-semibold text-text">{formatBillDate(bill.purchase_date || extracted.purchase_date)}</p>
-                    </div>
-                    <div className="rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
-                        <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">Total</p>
-                        <p className="mt-1 text-sm font-semibold text-text">
-                            {formatBillAmount(bill.total_amount ?? extracted.total_amount, bill.currency || extracted.currency)}
-                        </p>
-                    </div>
-                </div>
-
-                {items.length > 0 && (
-                    <div className="mt-4 border-t border-border/70 pt-4">
-                        <p className="text-[0.5625rem] font-black uppercase tracking-[0.22em] text-text-dim">
-                            Items ({items.length})
-                        </p>
-                        <div className="mt-2 space-y-2">
-                            {items.slice(0, 3).map((item, index) => (
-                                <div
-                                    key={`${item.id || index}`}
-                                    className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background-elevated px-3 py-2"
-                                >
-                                    <div className="min-w-0">
-                                        <p className="truncate text-sm font-semibold text-text">{item.name || "Unnamed item"}</p>
-                                        <p className="mt-1 text-[0.625rem] uppercase tracking-[0.18em] text-text-dim">
-                                            Qty {item.quantity ?? 1}
-                                        </p>
-                                    </div>
-                                    <p className="shrink-0 text-sm font-bold text-accent">
-                                        {item.total != null ? `${item.total} ${bill.currency || extracted.currency || "VND"}` : "—"}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {bill.ocr_text && (
-                    <details className="mt-4 rounded-2xl border border-border/70 bg-background-elevated px-3 py-2">
-                        <summary className="cursor-pointer text-[0.625rem] font-black uppercase tracking-[0.22em] text-text-dim">
-                            Raw OCR text
-                        </summary>
-                        <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap text-xs leading-6 text-text-muted">
-                            {bill.ocr_text}
-                        </pre>
-                    </details>
-                )}
-            </div>
-        );
-    };
-
-    // ✅ Clean content function - remove unwanted text
-    const cleanContent = (content) => {
-        if (!content) return content;
-        let cleaned = content;
-        // Remove "AI GENERATED VISUAL" text
-        cleaned = cleaned.replace(/AI\s*GENERATED\s*VISUAL/gi, '');
-        // Remove duplicate "Chia sẻ file"
-        cleaned = cleaned.replace(/(Chia sẻ file\s*){2,}/gi, 'Chia sẻ file');
-        // Remove empty markdown images
-        cleaned = cleaned.replace(/!\[\]\(undefined\)/g, '');
-        cleaned = cleaned.replace(/!\[\]\(null\)/g, '');
-        return cleaned.trim();
-    };
-
-    const renderContent = (msg, role) => {
-        const hasImage = Boolean(msg.image_path);
-        const isBill = msg.type === "bill";
-        // Clean the content before rendering
-        const cleanedContent = cleanContent(msg.content);
-
-        return (
-            <>
-                {isBill && (
-                    <div className="mb-3 inline-flex rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-[0.625rem] font-black uppercase tracking-[0.24em] text-accent">
-                        Hóa đơn
-                    </div>
-                )}
-
-                {msg.bill && renderBillSummary(msg.bill)}
-
-                {hasImage && (() => {
-                    const paths = msg.image_paths && msg.image_paths.length > 1
-                        ? msg.image_paths
-                        : [msg.image_path];
-                    const isMulti = paths.length > 1;
-
-                    return (
-                        <div className="overflow-hidden rounded-[20px] border border-border/70 bg-background-elevated">
-                            <div className="flex items-center justify-between border-b border-border/70 bg-surface/50 px-4 py-2">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
-                                    {isMulti
-                                        ? `📄 ${paths.length} hóa đơn đã tải lên`
-                                        : (isBill ? "📄 Hóa đơn đã tải lên" : "🖼️ Ảnh đã tải lên")}
-                                </span>
-                                {isMulti && (
-                                    <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-black text-accent border border-accent/20">
-                                        Batch OCR
-                                    </span>
-                                )}
-                            </div>
-
-                            {isMulti ? (
-                                <div className={`grid gap-1 p-2 ${paths.length === 2 ? "grid-cols-2" : paths.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}>
-                                    {paths.map((src, i) => (
-                                        <div key={i} className="relative aspect-square overflow-hidden rounded-[12px] bg-background">
-                                            <img
-                                                src={src}
-                                                alt={`Invoice ${i + 1}`}
-                                                className="h-full w-full object-cover"
-                                                loading="lazy"
-                                                onError={(e) => {
-                                                    e.currentTarget.style.display = "none";
-                                                    if (e.currentTarget.nextElementSibling) {
-                                                        e.currentTarget.nextElementSibling.style.display = "flex";
-                                                    }
-                                                }}
-                                            />
-                                            <div style={{ display: "none" }} className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background-elevated text-text-dim">
-                                                <span className="text-2xl">🧾</span>
-                                                <span className="text-[9px] font-bold">#{i + 1}</span>
-                                            </div>
-                                            <div className="absolute bottom-1 right-1 rounded-full bg-black/50 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                                                #{i + 1}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <>
-                                    <img
-                                        src={paths[0]}
-                                        alt={isBill ? "Uploaded invoice" : "Uploaded image"}
-                                        className="max-h-[28rem] w-full object-contain bg-background-elevated"
-                                        loading="lazy"
-                                        onError={(e) => {
-                                            e.currentTarget.style.display = "none";
-                                            const fallback = e.currentTarget.nextElementSibling;
-                                            if (fallback) fallback.style.display = "flex";
-                                        }}
-                                    />
-                                    <div style={{ display: "none" }} className="flex flex-col items-center justify-center gap-3 py-10 text-text-dim">
-                                        <span className="text-4xl">🧾</span>
-                                        <span className="text-xs font-bold uppercase tracking-[0.2em]">
-                                            {isBill ? "Hóa đơn đã được xử lý" : "Ảnh đã được tải lên"}
-                                        </span>
-                                        <span className="text-[10px] text-text-dim/60">Xem kết quả trích xuất bên trên</span>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    );
-                })()}
-
-                {cleanedContent ? (
-                    <div className={hasImage ? "mt-3" : ""}>
-                        {role === "user" ? (
-                            <span className="whitespace-pre-wrap">{cleanedContent}</span>
-                        ) : (
-                            <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                    code: CodeBlock,
-                                    img: CustomImage,  // ✅ Sử dụng component image đã fix
-                                    a: (props) => (
-                                        <a {...props} className="text-accent underline decoration-accent/30 underline-offset-4" target="_blank" rel="noopener noreferrer">
-                                            {props.children}
-                                        </a>
-                                    ),
-                                }}
-                            >
-                                {cleanedContent}
-                            </ReactMarkdown>
-                        )}
-                    </div>
-                ) : null}
-            </>
-        );
-    };
-
     return (
         <section
             ref={chatRef}
@@ -456,7 +449,7 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
                 <AnimatePresence>
                     {grouped.map((g, i) => (
                         <motion.div
-                            key={i}
+                            key={g.list[0]?.id || `group-${i}`}
                             initial={{ opacity: 0, y: 20, scale: 0.98 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             transition={{ 
@@ -512,7 +505,7 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
                                             )}
                                             
                                             <div className="relative z-10">
-                                                {renderContent(msg, g.role)}
+                                                <MessageContent msg={msg} role={g.role} />
                                             </div>
                                         </div>
 
@@ -575,3 +568,5 @@ export default function ChatGPT({ messages = [], isLoading, messagesEndRef, show
         </section>
     );
 }
+
+export default memo(ChatGPT);

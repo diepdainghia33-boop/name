@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 import { Search, Bell, Menu, MessageSquare, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import NotificationDropdown from "../Dashboard/NotificationDropdown";
 
-export default function Header({
+function Header({
     searchQuery,
     setSearchQuery,
     user,
@@ -149,4 +149,6 @@ export default function Header({
         </header>
     );
 }
+
+export default memo(Header);
 

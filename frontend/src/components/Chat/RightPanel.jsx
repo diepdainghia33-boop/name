@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import {
     AlertCircle,
     Archive,
@@ -41,7 +41,7 @@ function formatDate(dateStr) {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function SectionLabel({ label }) {
+const SectionLabel = memo(function SectionLabel({ label }) {
     return (
         <div className="flex items-center gap-2 mb-3 pt-2 first:pt-0">
             <div className="h-px flex-1 bg-border/70" />
@@ -49,9 +49,9 @@ function SectionLabel({ label }) {
             <div className="h-px flex-1 bg-border/70" />
         </div>
     );
-}
+});
 
-function ProjectCodexButton() {
+const ProjectCodexButton = memo(function ProjectCodexButton() {
     return (
         <motion.button
             whileHover={{ scale: 1.02 }}
@@ -62,9 +62,9 @@ function ProjectCodexButton() {
             <span className="relative z-10">Codex</span>
         </motion.button>
     );
-}
+});
 
-function MoreMenu() {
+const MoreMenu = memo(function MoreMenu() {
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -6 }}
@@ -86,9 +86,88 @@ function MoreMenu() {
             </button>
         </motion.div>
     );
-}
+});
 
-export default function RightPanel({
+const ConversationCard = memo(({ conv, activeId, isMobile, onSelectConversation, openContextMenu }) => {
+    const isActive = activeId === conv.id;
+    const isPinned = Boolean(conv.is_pinned);
+    const msgCount = Number(conv.message_count || 0);
+    const tokenCount = Number(conv.token_count || 0);
+
+    const handleClick = useCallback(() => {
+        onSelectConversation?.(conv.id);
+    }, [conv.id, onSelectConversation]);
+
+    const handleContextMenu = useCallback((event) => {
+        openContextMenu(event, conv);
+    }, [conv, openContextMenu]);
+
+    const handleMenuClick = useCallback((event) => {
+        openContextMenu(event, conv);
+    }, [conv, openContextMenu]);
+
+    return (
+        <motion.button
+            type="button"
+            layout
+            initial={{ opacity: 0, x: isMobile ? 20 : 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: isMobile ? -20 : -16 }}
+            whileHover={{ scale: 1.01, x: 4 }}
+            onClick={handleClick}
+            onContextMenu={handleContextMenu}
+            className={`group relative flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${isActive
+                ? "border-accent/20 bg-accent/10 shadow-[inset_0_0_16px_rgba(0,0,0,0.12)]"
+                : "border-border/70 bg-surface hover:border-border-strong hover:bg-background-elevated"
+                }`}
+        >
+            {isPinned && (
+                <div className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-warning shadow-lg">
+                    <Pin size={10} className="text-background fill-background" />
+                </div>
+            )}
+
+            <div className={`mt-0.5 flex-shrink-0 rounded-lg p-1.5 ${isActive ? "bg-accent/15 text-accent" : "bg-surface text-text-dim group-hover:text-accent"}`}>
+                <MessageSquare size={14} />
+            </div>
+
+            <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                    <p className={`min-w-0 flex-1 truncate text-[0.75rem] font-bold leading-snug ${isActive ? "text-text" : "text-text-muted"}`}>
+                        {conv.title || "New conversation"}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={handleMenuClick}
+                        className="rounded p-1 text-text-dim opacity-0 transition hover:bg-surface-strong hover:text-text group-hover:opacity-100"
+                        aria-label="Conversation options"
+                    >
+                        <MoreVertical size={14} />
+                    </button>
+                </div>
+
+                {conv.preview && (
+                    <p className="mt-1 line-clamp-2 text-[0.625rem] leading-relaxed text-text-dim">
+                        {conv.preview}
+                    </p>
+                )}
+
+                <div className="mt-2 flex items-center gap-3 text-[0.5625rem] font-black uppercase tracking-wider text-text-dim">
+                    <span className="flex items-center gap-1">
+                        <History size={9} />
+                        {formatDate(conv.updated_at || conv.created_at)}
+                    </span>
+                    <span>•</span>
+                    <span>{msgCount} msgs</span>
+                    <span>•</span>
+                    <span className="text-accent/80">{tokenCount} tkns</span>
+                </div>
+            </div>
+        </motion.button>
+    );
+});
+
+function RightPanel({
     conversations = [],
     onSelectConversation,
     onNewConversation,
@@ -157,7 +236,7 @@ export default function RightPanel({
         return groups;
     }, [filteredConversations.unpinned]);
 
-    const openContextMenu = (event, conv) => {
+    const openContextMenu = useCallback((event, conv) => {
         event.stopPropagation();
         event.preventDefault();
         setShowMoreMenu(false);
@@ -184,46 +263,46 @@ export default function RightPanel({
             top: y,
             left: x,
         });
-    };
+    }, []);
 
-    const closeContextMenu = () => setContextMenu(null);
+    const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
-    const togglePin = (id) => {
+    const togglePin = useCallback((id) => {
         const conversation = conversations.find((item) => item.id === id);
         onPinConversation?.(id, !conversation?.is_pinned);
-    };
+    }, [conversations, onPinConversation]);
 
-    const toggleArchive = (id) => {
+    const toggleArchive = useCallback((id) => {
         const conversation = conversations.find((item) => item.id === id);
         onArchiveConversation?.(id, !conversation?.is_archived);
-    };
+    }, [conversations, onArchiveConversation]);
 
-    const handleRename = (conv) => {
+    const handleRename = useCallback((conv) => {
         const nextTitle = prompt("Rename conversation:", conv.title || "");
         if (nextTitle && nextTitle.trim()) {
             onRenameConversation?.(conv.id, nextTitle.trim());
         }
         closeContextMenu();
-    };
+    }, [onRenameConversation, closeContextMenu]);
 
-    const handleDeleteClick = (id) => {
+    const handleDeleteClick = useCallback((id) => {
         setConversationToDelete(id);
         setShowDeleteConfirm(true);
         closeContextMenu();
-    };
+    }, [closeContextMenu]);
 
-    const confirmDelete = () => {
+    const confirmDelete = useCallback(() => {
         if (conversationToDelete) {
             onDeleteConversation?.(conversationToDelete);
         }
         setConversationToDelete(null);
         setShowDeleteConfirm(false);
-    };
+    }, [conversationToDelete, onDeleteConversation]);
 
-    const cancelDelete = () => {
+    const cancelDelete = useCallback(() => {
         setConversationToDelete(null);
         setShowDeleteConfirm(false);
-    };
+    }, []);
 
     const totalMsgs = conversations.reduce((sum, conversation) => sum + Number(conversation.message_count || 0), 0);
     const totalTokens = conversations.reduce((sum, conversation) => sum + Number(conversation.token_count || 0), 0);
@@ -237,72 +316,7 @@ export default function RightPanel({
         ? "fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] flex-col bg-background text-text"
         : "relative z-20 hidden h-screen w-72 flex-col border-l border-border/70 bg-background p-5 text-text lg:flex";
 
-    const ConversationCard = ({ conv }) => {
-        const isActive = activeId === conv.id;
-        const isPinned = Boolean(conv.is_pinned);
-        const msgCount = Number(conv.message_count || 0);
-        const tokenCount = Number(conv.token_count || 0);
 
-        return (
-            <motion.button
-                type="button"
-                layout
-                initial={{ opacity: 0, x: isMobile ? 20 : 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: isMobile ? -20 : -16 }}
-                whileHover={{ scale: 1.01, x: 4 }}
-                onClick={() => onSelectConversation?.(conv.id)}
-                onContextMenu={(event) => openContextMenu(event, conv)}
-                className={`group relative flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${isActive
-                    ? "border-accent/20 bg-accent/10 shadow-[inset_0_0_16px_rgba(0,0,0,0.12)]"
-                    : "border-border/70 bg-surface hover:border-border-strong hover:bg-background-elevated"
-                    }`}
-            >
-                {isPinned && (
-                    <div className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-warning shadow-lg">
-                        <Pin size={10} className="text-background fill-background" />
-                    </div>
-                )}
-
-                <div className={`mt-0.5 flex-shrink-0 rounded-lg p-1.5 ${isActive ? "bg-accent/15 text-accent" : "bg-surface text-text-dim group-hover:text-accent"}`}>
-                    <MessageSquare size={14} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                        <p className={`min-w-0 flex-1 truncate text-[0.75rem] font-bold leading-snug ${isActive ? "text-text" : "text-text-muted"}`}>
-                            {conv.title || "New conversation"}
-                        </p>
-                        <button
-                            type="button"
-                            onClick={(event) => openContextMenu(event, conv)}
-                            className="rounded p-1 text-text-dim opacity-0 transition hover:bg-surface-strong hover:text-text group-hover:opacity-100"
-                            aria-label="Conversation options"
-                        >
-                            <MoreVertical size={14} />
-                        </button>
-                    </div>
-
-                    {conv.preview && (
-                        <p className="mt-1 line-clamp-2 text-[0.625rem] leading-relaxed text-text-dim">
-                            {conv.preview}
-                        </p>
-                    )}
-
-                    <div className="mt-2 flex items-center gap-3 text-[0.5625rem] font-black uppercase tracking-wider text-text-dim">
-                        <span className="flex items-center gap-1">
-                            <History size={9} />
-                            {formatDate(conv.updated_at || conv.created_at)}
-                        </span>
-                        <span>•</span>
-                        <span>{msgCount} msgs</span>
-                        <span>•</span>
-                        <span className="text-accent/80">{tokenCount} tkns</span>
-                    </div>
-                </div>
-            </motion.button>
-        );
-    };
 
     return (
         <aside ref={panelRef} className={containerClasses}>
@@ -423,7 +437,14 @@ export default function RightPanel({
                         </div>
                         <AnimatePresence>
                             {filteredConversations.pinned.map((conv) => (
-                                <ConversationCard key={conv.id} conv={conv} />
+                                <ConversationCard
+                                    key={conv.id}
+                                    conv={conv}
+                                    activeId={activeId}
+                                    isMobile={isMobile}
+                                    onSelectConversation={onSelectConversation}
+                                    openContextMenu={openContextMenu}
+                                />
                             ))}
                         </AnimatePresence>
                     </div>
@@ -441,7 +462,14 @@ export default function RightPanel({
                             />
                             <AnimatePresence>
                                 {convs.map((conv) => (
-                                    <ConversationCard key={conv.id} conv={conv} />
+                                    <ConversationCard
+                                        key={conv.id}
+                                        conv={conv}
+                                        activeId={activeId}
+                                        isMobile={isMobile}
+                                        onSelectConversation={onSelectConversation}
+                                        openContextMenu={openContextMenu}
+                                    />
                                 ))}
                             </AnimatePresence>
                         </div>
@@ -619,4 +647,6 @@ export default function RightPanel({
         </aside>
     );
 }
+
+export default memo(RightPanel);
 

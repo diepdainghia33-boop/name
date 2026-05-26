@@ -1,8 +1,28 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { Send, Paperclip, X, Mic, Globe, FileText, FileSpreadsheet, Image as ImageIcon, File, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function InputBar({ onSend, isLoading, sendOnEnter = true }) {
+const getFileType = (file) => {
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type === "application/pdf") return "pdf";
+    if (file.type.includes("spreadsheet") || file.type.includes("excel") || file.type === "text/csv") return "excel";
+    return "unknown";
+};
+
+const getFileIcon = (type) => {
+    switch (type) {
+        case "image":
+            return <ImageIcon size={18} className="text-accent" />;
+        case "pdf":
+            return <FileText size={18} className="text-danger" />;
+        case "excel":
+            return <FileSpreadsheet size={18} className="text-success" />;
+        default:
+            return <File size={18} className="text-text-dim" />;
+    }
+};
+
+function InputBar({ onSend, isLoading, sendOnEnter = true }) {
     const [inputValue, setInputValue] = useState("");
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [searchMode, setSearchMode] = useState(false);
@@ -44,13 +64,6 @@ export default function InputBar({ onSend, isLoading, sendOnEnter = true }) {
         return { file, preview, type: fileType };
     }, []);
 
-    const getFileType = (file) => {
-        if (file.type.startsWith("image/")) return "image";
-        if (file.type === "application/pdf") return "pdf";
-        if (file.type.includes("spreadsheet") || file.type.includes("excel") || file.type === "text/csv") return "excel";
-        return "unknown";
-    };
-
     const handleFiles = useCallback(
         (files) => {
             const newFiles = Array.from(files).map(processFile).filter((f) => f.type !== "unknown");
@@ -59,7 +72,7 @@ export default function InputBar({ onSend, isLoading, sendOnEnter = true }) {
         [processFile]
     );
 
-    const handleSend = () => {
+    const handleSend = useCallback(() => {
         if (isLoading) return;
         const trimmed = inputValue.trim();
         const hasContent = trimmed || selectedFiles.length > 0;
@@ -81,43 +94,43 @@ export default function InputBar({ onSend, isLoading, sendOnEnter = true }) {
         if (textareaRef.current) {
             textareaRef.current.style.height = "auto";
         }
-    };
+    }, [inputValue, selectedFiles, isLoading, searchMode, onSend]);
 
-    const handleFileSelect = (e) => {
+    const handleFileSelect = useCallback((e) => {
         const files = e.target.files;
         if (files) handleFiles(files);
         e.target.value = "";
-    };
+    }, [handleFiles]);
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = useCallback((e) => {
         if (e.key === "Enter" && !e.shiftKey && sendOnEnter) {
             e.preventDefault();
             handleSend();
         }
-    };
+    }, [sendOnEnter, handleSend]);
 
-    const removeFile = (index) => {
+    const removeFile = useCallback((index) => {
         const file = selectedFiles[index];
         if (file.preview) {
             if (typeof file.preview === "string" && file.preview.startsWith("blob:")) URL.revokeObjectURL(file.preview);
             if (typeof file.preview === "object" && file.preview.url) URL.revokeObjectURL(file.preview.url);
         }
         setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-    };
+    }, [selectedFiles]);
 
-    const toggleSearchMode = () => setSearchMode(!searchMode);
+    const toggleSearchMode = useCallback(() => setSearchMode((prev) => !prev), []);
 
     const canSend = (inputValue.trim() || selectedFiles.length > 0) && !isLoading;
 
-    const getPlaceholder = () => {
+    const getPlaceholder = useCallback(() => {
         if (isLoading) return "AI is replying...";
         if (selectedFiles.some((f) => f.type === "pdf" || f.type === "excel")) return "Add a note for the file...";
-        const imageCount = selectedFiles.filter(f => f.type === "image").length;
+        const imageCount = selectedFiles.filter((f) => f.type === "image").length;
         if (imageCount > 1) return `${imageCount} hóa đơn đã chọn — thêm ghi chú hoặc nhấn Send để trích xuất tất cả...`;
         if (imageCount === 1) return "Thêm nội dung mô tả hóa đơn (tuỳ chọn)...";
         if (searchMode) return "Search the web...";
         return "Message Architect AI... (Enter to send, Shift+Enter for a new line)";
-    };
+    }, [isLoading, selectedFiles, searchMode]);
 
     const handleDragOver = useCallback((e) => {
         e.preventDefault();
@@ -141,19 +154,6 @@ export default function InputBar({ onSend, isLoading, sendOnEnter = true }) {
         },
         [handleFiles]
     );
-
-    const getFileIcon = (type) => {
-        switch (type) {
-            case "image":
-                return <ImageIcon size={18} className="text-accent" />;
-            case "pdf":
-                return <FileText size={18} className="text-danger" />;
-            case "excel":
-                return <FileSpreadsheet size={18} className="text-success" />;
-            default:
-                return <File size={18} className="text-text-dim" />;
-        }
-    };
 
     return (
         <div
@@ -324,4 +324,6 @@ export default function InputBar({ onSend, isLoading, sendOnEnter = true }) {
         </div>
     );
 }
+
+export default memo(InputBar);
 
